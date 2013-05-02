@@ -1,0 +1,13 @@
+.*.swp
+
+*.o
+Makefile
+*.a
+*.in
+.deps
+config*
+
+aclocal.m4
+autom4te.cache
+gaviewer
+src/console/codegen/codegen
