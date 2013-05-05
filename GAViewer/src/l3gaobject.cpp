@@ -314,7 +314,9 @@ int l3gaObject::draw(glwindow *window) {
         drawTriVector(NULL, (m_drawMode & OD_MAGNITUDE) ? m_int.m_scalar[0] : ((m_int.m_scalar[0] < 0.0) ? -1.0 : 1.0), NULL, m_dmMenuIdx, (m_drawMode & OD_ORI) ? 0x01 : 0, this);
         break;
       case MVI_PLANE:
-        drawPlane(m_int.m_point[0], m_int.m_vector[0], m_int.m_vector[1], m_int.m_vector[2], m_int.m_scalar[0], DRAW_PLANE, 0, this);
+        printf("Drawing plane!\n");
+        drawRegulus();
+        // drawPlane(m_int.m_point[0], m_int.m_vector[0], m_int.m_vector[1], m_int.m_vector[2], m_int.m_scalar[0], DRAW_PLANE, 0, this);
         break;
       case MVI_LINE_PENCIL_PAIR:
         scale = (m_drawMode & OD_MAGNITUDE)

@@ -440,6 +440,35 @@ int drawTriVector(const GAIM_FLOAT base[3], GAIM_FLOAT scale, GAIM_FLOAT vector[
 	return 0;
 }
 
+int drawRegulus() {
+  TubeDraw &T = gui_state->m_tubeDraw;
+
+  glMatrixMode(GL_MODELVIEW);
+  glDisable(GL_LIGHTING);
+  glPushMatrix();
+
+  // draw the standard regulus with its cross section in the e12 plane and its axis e3
+  // lines slope at pi/4
+  glLineWidth(2.5);
+  glColor3d(0, 1, 0);
+
+  // draw the axis
+  T.begin(GL_LINES);
+  glVertex3d(0, 0, 0);
+  glVertex3d(0, 1, 0);
+  T.end();
+
+  // draw the lines
+  for (double i = 0; i < 360; i += 20) {
+    glRotated(i, 0, 1, 0);
+    T.begin(GL_LINES);
+    T.vertex3d(1, 0, 1);
+    T.vertex3d(2, 1, 2);
+    T.end();
+  }
+
+  return 0;
+}
 
 int drawLine(const GAIM_FLOAT point[3], const GAIM_FLOAT normal[3], GAIM_FLOAT magnitude, int method /*= DRAW_LINE_HOOKS */, int flags /*= 0*/, object *o /*= NULL*/) {
 	TubeDraw &T = gui_state->m_tubeDraw;
