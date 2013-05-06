@@ -144,7 +144,7 @@ l3gaObject::l3gaObject(const l3ga &mv, const std::string &name /*= std::string("
         case MVI_POINT:
           break;
         case MVI_IDEAL_POINT:
-          m_drawMode |= OD_STIPPLE;
+          //m_drawMode |= OD_STIPPLE;
           break;
         case MVI_PLANE:
           m_dmMenuIdx = DRAW_PLANE;
@@ -307,7 +307,8 @@ int l3gaObject::draw(glwindow *window) {
         drawPoint(m_int.m_point[0], m_int.m_scalar[0], 0, this);
         break;
       case MVI_IDEAL_POINT:
-        drawIdealPoint(m_int.m_vector[0], m_int.m_scalar[0], DRAW_IDEAL_POINT, 0, this);
+        drawRegulus();
+        //drawIdealPoint(m_int.m_vector[0], m_int.m_scalar[0], DRAW_IDEAL_POINT, 0, this);
         break;
       case MVI_IDEAL_PLANE:
         glPolygonMode(GL_FRONT_AND_BACK, (m_drawMode & OD_WIREFRAME) ? GL_LINE : GL_FILL);

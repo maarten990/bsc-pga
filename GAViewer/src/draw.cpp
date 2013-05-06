@@ -442,31 +442,49 @@ int drawTriVector(const GAIM_FLOAT base[3], GAIM_FLOAT scale, GAIM_FLOAT vector[
 
 int drawRegulus() {
   TubeDraw &T = gui_state->m_tubeDraw;
+  e3ga rotor;
+  float rotorMatrix[16];
+  GAIM_FLOAT axis[3] = {0, 0, 1};
 
+  const GAIM_FLOAT rotStep = 2 * M_PI / 64;
+
+  // OpenGL boilerplate
   glMatrixMode(GL_MODELVIEW);
   glDisable(GL_LIGHTING);
   glPushMatrix();
 
   // draw the standard regulus with its cross section in the e12 plane and its axis e3
   // lines slope at pi/4
-  glLineWidth(2.5);
   glColor3d(0, 1, 0);
+
+  // rotate e3 to the axis/plane normal
+  e3gaRve3(rotor, e3ga(GRADE1, axis));
+  e3gaRotorToOpenGLMatrix(rotor, rotorMatrix);
+  glMultMatrixf(rotorMatrix);
 
   // draw the axis
   T.begin(GL_LINES);
-  glVertex3d(0, 0, 0);
-  glVertex3d(0, 1, 0);
+  T.vertex3d(0, 0, 0);
+  T.vertex3d(0, 0, 1);
   T.end();
 
+
   // draw the lines
-  for (double i = 0; i < 360; i += 20) {
-    glRotated(i, 0, 1, 0);
+  for (double i = 0; i < 360; i += 45) {
+    glRotated(i, 0, 0, 1);
+
+    glPushMatrix();
+    glRotated(45, 1, 0, 0);
+
     T.begin(GL_LINES);
-    T.vertex3d(1, 0, 1);
-    T.vertex3d(2, 1, 2);
+    T.vertex3d(1, 0, -100);
+    T.vertex3d(1, 0, 100);
     T.end();
+
+    glPopMatrix();
   }
 
+  glPopMatrix();
   return 0;
 }
 
