@@ -307,7 +307,7 @@ int l3gaObject::draw(glwindow *window) {
         drawPoint(m_int.m_point[0], m_int.m_scalar[0], 0, this);
         break;
       case MVI_IDEAL_POINT:
-        drawRegulus();
+        drawRegulus(e3ga::e3, M_PI / 4);
         //drawIdealPoint(m_int.m_vector[0], m_int.m_scalar[0], DRAW_IDEAL_POINT, 0, this);
         break;
       case MVI_IDEAL_PLANE:
@@ -316,7 +316,7 @@ int l3gaObject::draw(glwindow *window) {
         break;
       case MVI_PLANE:
         printf("Drawing plane!\n");
-        drawRegulus();
+        drawRegulus(e3ga::e3, M_PI / 4);
         // drawPlane(m_int.m_point[0], m_int.m_vector[0], m_int.m_vector[1], m_int.m_vector[2], m_int.m_scalar[0], DRAW_PLANE, 0, this);
         break;
       case MVI_LINE_PENCIL_PAIR:

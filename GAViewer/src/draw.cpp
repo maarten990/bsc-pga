@@ -447,44 +447,39 @@ void glApplyRotor(e3ga rotor)
   glMultMatrixf(matrix);
 }
 
-int drawRegulus() {
+int drawRegulus(e3ga axis, double slant) {
   TubeDraw &T = gui_state->m_tubeDraw;
-  e3ga axis = e3ga::e3;
+  e3ga plane = axis.dual();
+  e3ga rotor;
 
   // OpenGL boilerplate
   glMatrixMode(GL_MODELVIEW);
   glDisable(GL_LIGHTING);
   glPushMatrix();
 
-  // green is cool for now
+  // green used for 3-blades
   glColor3d(0, 1, 0);
 
   // rotate e3 to the axis/plane normal
-  e3ga rotor;
   e3gaRve3(rotor, axis);
   glApplyRotor(rotor);
 
   // draw a selection of the lines in the regulus
   for (double i = 0; i < 2 * M_PI; i += M_PI / 4) {
-    e3ga rotor;
-    float rotorMatrix[16];
-
-    // rotate by i radians around the axis (in the e1 ^ e2 plane)
-    rotor = cos(i / 2) - (e3ga::e1 ^ e3ga::e2) * sin(i / 2);
+    // rotate by i radians around the axis
+    rotor = cos(i / 2) - plane * sin(i / 2);
     glApplyRotor(rotor);
 
-    // rotate by 45 degrees in the e2 ^ e3 plane
+    // rotate by the slant angle in the e2 ^ e3 plane
     glPushMatrix();
-    double phi = M_PI / 4;
-    rotor = cos(phi / 2) - (e3ga::e2 ^ e3ga::e3) * sin(phi / 2);
+    rotor = cos(slant / 2) - (e3ga::e2 ^ e3ga::e3) * sin(slant / 2);
     glApplyRotor(rotor);
 
     T.begin(GL_LINES);
-    T.vertex3d(1, 0, -100);
-    T.vertex3d(1, 0, 100);
+    T.vertex3d(1, 0, -30);
+    T.vertex3d(1, 0, 30);
     T.end();
     glPopMatrix();
-
   }
 
   glPopMatrix();
