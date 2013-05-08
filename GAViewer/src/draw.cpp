@@ -465,7 +465,7 @@ int drawRegulus(e3ga axis, double slant) {
   glApplyRotor(rotor);
 
   // draw a selection of the lines in the regulus
-  for (double i = 0; i < 2 * M_PI; i += M_PI / 4) {
+  for (double i = 0; i < 2 * M_PI; i += M_PI / 8) {
     // rotate by i radians around the axis
     rotor = cos(i / 2) - plane * sin(i / 2);
     glApplyRotor(rotor);
