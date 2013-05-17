@@ -389,7 +389,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           m_valid = 1;
         }
         else if (!((interpret[0].m_type & MVI_DUAL) || (interpret[1].m_type & MVI_DUAL) || (interpret[2].m_type & MVI_DUAL)) &&
-            intersection_count == 3) {
+                 intersection_count == 3 && (X*X).scalar() == 0) {
           // point of intersection is the meet of the two homogeneous lines!
           p3ga a1 = (consoleVariable("", factors[0]).castToP3ga())->p(),
                a2 = (consoleVariable("", factors[1]).castToP3ga())->p(),
@@ -429,20 +429,20 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           }
             
 
-          if (isIdeal == 3) {
+          if (isIdeal == 3 && (X * X).scalar() == 0) {
             m_type |= MVI_IDEAL_POINT;
-            printf("ideal point\n");
+            //printf("ideal point\n");
             /*
             scalar 0: weight
             scalar 1: orientation
             vector 0: direction
             */
-
             m_vector[0][0] = m_scalar[1] * intersection2[GRADE1][P3GA_E1];
             m_vector[0][1] = m_scalar[1] * intersection2[GRADE1][P3GA_E2];
             m_vector[0][2] = m_scalar[1] * intersection2[GRADE1][P3GA_E3];
             m_valid = 1;
           }
+
           else if (fabs((intersection1 - intersection2).norm_a()) < epsilon && 
               fabs((intersection2 - intersection3).norm_a()) < epsilon &&
               fabs((intersection3 - intersection1).norm_a()) < epsilon) {
@@ -537,10 +537,19 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           m_vector[2][1] = m_point[1][1] - m_point[0][1];
           m_vector[2][2] = m_point[1][2] - m_point[0][2];
         }
-        else if (intersection_count == 0) {
+        else if ( (X * X).scalar() != 0) {
           m_type |= MVI_REGULUS;
-          printf("regulus\n");
-          m_valid = 0;
+          //printf("regulus\n");
+
+          /**
+           * scalar0: angle
+           * vector0: axis
+           */
+          e3ga axis;
+          double angle;
+          //regulusParameters(&axis, &angle, X, factors);
+
+          m_valid = 1;
         }
         else {
           m_type |= MVI_UNKNOWN;
