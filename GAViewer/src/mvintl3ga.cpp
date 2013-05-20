@@ -18,12 +18,19 @@
 #include <math.h>
 #include <algorithm>
 #include <vector>
+#include <iostream>
 
 #include "object.h"
 #include "mvint.h"
 #include "util.h"
 #include "state.h"
 #include "console/consolevariable.h"
+
+#include <eigen2/Eigen/Core>
+#include <eigen2/Eigen/Eigen>
+#include <eigen2/Eigen/src/QR/EigenSolver.h>
+
+USING_PART_OF_NAMESPACE_EIGEN
 
 #define p3gaToL3ga(x) (consoleVariable("", x).castToL3ga()->l3())
 #define l3gaToP3ga(x) (consoleVariable("", x).castToP3ga()->p())
@@ -39,6 +46,7 @@ p3ga moment(p3ga x);
 p3ga cross_product(p3ga x, p3ga y); 
 p3ga point_on_line(p3ga x, GAIM_FLOAT t);
 
+void versorToMatrix(const l3ga &R);
 
 int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
   const GAIM_FLOAT epsilon = 1e-6; // rather arbitrary limit on fp-noise
@@ -547,6 +555,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
            */
           e3ga axis;
           double angle;
+          versorToMatrix(X);
           //regulusParameters(&axis, &angle, X, factors);
 
           m_valid = 1;
@@ -839,4 +848,46 @@ p3ga cross_product(p3ga x, p3ga y) {
 
 p3ga point_on_line(p3ga x, GAIM_FLOAT t) {
   return (cross_product(moment(x), direction(x)) + (t * direction(x)) + (direction(x) * direction(x) * p3ga::e0)) / (direction(x) * direction(x));
+}
+
+/* Basis of e01, e02, e03, e12, e23, e31
+ */
+VectorXd transformVersor(const l3ga &R, VectorXd vec)
+{
+  l3ga beforeGA(6, vec[0], vec[1], vec[2], vec[3], vec[4], vec[5]),
+    afterGA;
+
+  VectorXd after(6);
+  // FIXME: this
+  after <<
+    afterGA[GRADE1][L3GA_E01],
+    afterGA[GRADE1][L3GA_E02],
+    afterGA[GRADE1][L3GA_E03],
+    afterGA[GRADE1][L3GA_E12],
+    afterGA[GRADE1][L3GA_E23],
+    afterGA[GRADE1][L3GA_E31];
+  std::cout << "After: " << std::endl << after << std::endl;
+
+  return after;
+}
+
+void versorToMatrix(const l3ga &R)
+{
+  MatrixXd basis(6, 6), transform(6, 6);
+  basis <<
+    1, 0, 0, 0, 0, 0,
+    0, 1, 0, 0, 0, 0,
+    0, 0, 1, 0, 0, 0,
+    0, 0, 0, 1, 0, 0,
+    0, 0, 0, 0, 1, 0,
+    0, 0, 0, 0, 0, 1;
+
+  for (int i = 0; i < 6; ++i) {
+    for (int j = 0; j < 6; ++j) {
+      transform.col(j)[i] = basis.col(j).dot( transformVersor(R, basis.row(i)) );
+    }
+  }
+
+  std::cout << "Transform: " << std::endl;
+  std::cout << transform << std::endl;
 }
