@@ -46,7 +46,7 @@ p3ga moment(p3ga x);
 p3ga cross_product(p3ga x, p3ga y); 
 p3ga point_on_line(p3ga x, GAIM_FLOAT t);
 
-void versorToMatrix(const l3ga &R);
+MatrixXd versorToMatrix(const l3ga &R);
 
 int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
   const GAIM_FLOAT epsilon = 1e-6; // rather arbitrary limit on fp-noise
@@ -857,8 +857,9 @@ VectorXd transformVersor(const l3ga &R, VectorXd vec)
   l3ga beforeGA(6, vec[0], vec[1], vec[2], vec[3], vec[4], vec[5]),
     afterGA;
 
+  afterGA = (-R) * beforeGA * R;
+
   VectorXd after(6);
-  // FIXME: this
   after <<
     afterGA[GRADE1][L3GA_E01],
     afterGA[GRADE1][L3GA_E02],
@@ -866,12 +867,11 @@ VectorXd transformVersor(const l3ga &R, VectorXd vec)
     afterGA[GRADE1][L3GA_E12],
     afterGA[GRADE1][L3GA_E23],
     afterGA[GRADE1][L3GA_E31];
-  std::cout << "After: " << std::endl << after << std::endl;
 
   return after;
 }
 
-void versorToMatrix(const l3ga &R)
+MatrixXd versorToMatrix(const l3ga &R)
 {
   MatrixXd basis(6, 6), transform(6, 6);
   basis <<
@@ -884,10 +884,9 @@ void versorToMatrix(const l3ga &R)
 
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 6; ++j) {
-      transform.col(j)[i] = basis.col(j).dot( transformVersor(R, basis.row(i)) );
+      transform.row(j)[i] = basis.col(j).dot( transformVersor(R, basis.col(i)) );
     }
   }
 
-  std::cout << "Transform: " << std::endl;
-  std::cout << transform << std::endl;
+  return transform;
 }
