@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <vector>
 #include <iostream>
+#include <assert.h>
 
 #include "object.h"
 #include "mvint.h"
@@ -47,6 +48,7 @@ p3ga cross_product(p3ga x, p3ga y);
 p3ga point_on_line(p3ga x, GAIM_FLOAT t);
 
 MatrixXd versorToMatrix(const l3ga &R);
+void eigenVectors(MatrixXd A);
 
 int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
   const GAIM_FLOAT epsilon = 1e-6; // rather arbitrary limit on fp-noise
@@ -555,7 +557,8 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
            */
           e3ga axis;
           double angle;
-          versorToMatrix(X);
+          MatrixXd transform = versorToMatrix(X);
+          eigenVectors(transform);
           //regulusParameters(&axis, &angle, X, factors);
 
           m_valid = 1;
@@ -857,7 +860,7 @@ VectorXd transformVersor(const l3ga &R, VectorXd vec)
   l3ga beforeGA(6, vec[0], vec[1], vec[2], vec[3], vec[4], vec[5]),
     afterGA;
 
-  afterGA = (-R) * beforeGA * R;
+  afterGA = (-R * beforeGA * R) / (R * R);
 
   VectorXd after(6);
   after <<
@@ -869,6 +872,43 @@ VectorXd transformVersor(const l3ga &R, VectorXd vec)
     afterGA[GRADE1][L3GA_E31];
 
   return after;
+}
+
+void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
+{
+  // check if the basis vectors transform properly
+  for (int i = 0; i < 6; ++i) {
+    VectorXd b = basis.col(i);
+    VectorXd bt = A * b;
+
+    l3ga bga(6, b[0], b[1], b[2], b[3], b[4], b[5]);
+    l3ga bgat = (-R * bga * R) / (R * R);
+    VectorXd bgatv(6);
+    bgatv <<
+      bgat[GRADE1][L3GA_E01],
+      bgat[GRADE1][L3GA_E02],
+      bgat[GRADE1][L3GA_E03],
+      bgat[GRADE1][L3GA_E12],
+      bgat[GRADE1][L3GA_E23],
+      bgat[GRADE1][L3GA_E31];
+
+    assert(bgatv == bt);
+  }
+
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M << MatrixXd::Zero(3, 3), MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+  // orthogonality check (Dorst unreleased paper, section 3.7)
+  std::cout << (M * A.transpose() * M * A) << std::endl;
+  assert( (M * A.transpose() * M * A) == MatrixXd::Identity(6, 6) );
+
+  // symmetry
+  // condition: A = M transp(A) M
+  std::cout << A << std::endl << std::endl;
+  std::cout << (M * A.transpose() * M) << std::endl;
+  assert( (M * A.transpose() * M) == A );
 }
 
 MatrixXd versorToMatrix(const l3ga &R)
@@ -884,9 +924,18 @@ MatrixXd versorToMatrix(const l3ga &R)
 
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 6; ++j) {
-      transform.row(j)[i] = basis.col(j).dot( transformVersor(R, basis.col(i)) );
+      transform.row(j)[i] = basis.row(j).dot( transformVersor(R, basis.col(i)) );
     }
   }
 
+  testTransformation(basis, R, transform);
+  
   return transform;
+}
+
+void eigenVectors(MatrixXd A)
+{
+  Eigen::EigenSolver<MatrixXd> eigen(A);
+  std::cout << "Eigenvectors: " << std::endl << eigen.eigenvectors() << std::endl;
+  std::cout << "Eigenvalues: " << std::endl << eigen.eigenvalues() << std::endl;
 }
