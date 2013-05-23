@@ -860,7 +860,7 @@ VectorXd transformVersor(const l3ga &R, VectorXd vec)
   l3ga beforeGA(6, vec[0], vec[1], vec[2], vec[3], vec[4], vec[5]),
     afterGA;
 
-  afterGA = (-R * beforeGA * R) / (R * R);
+  afterGA = (R.inverse() * beforeGA * R);
 
   VectorXd after(6);
   after <<
@@ -874,8 +874,14 @@ VectorXd transformVersor(const l3ga &R, VectorXd vec)
   return after;
 }
 
+MatrixXd Q = (1.0 / sqrt(2)) *
+  (MatrixXd(6, 6) <<
+   MatrixXd::Identity(3, 3), MatrixXd::Identity(3, 3),
+   MatrixXd::Identity(3, 3), -MatrixXd::Identity(3, 3)).finished();
+
 void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
 {
+  /*
   // check if the basis vectors transform properly
   for (int i = 0; i < 6; ++i) {
     VectorXd b = basis.col(i);
@@ -894,15 +900,17 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
 
     assert(bgatv == bt);
   }
+  */
 
   // construct the metric matrix for the null basis
   MatrixXd M(6, 6);
-  M << MatrixXd::Zero(3, 3), MatrixXd::Identity(3, 3),
-    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+  M <<
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3),
+    MatrixXd::Zero(3, 3),    -MatrixXd::Identity(3, 3);
 
   // orthogonality check (Dorst unreleased paper, section 3.7)
-  std::cout << (M * A.transpose() * M * A) << std::endl;
-  assert( (M * A.transpose() * M * A) == MatrixXd::Identity(6, 6) );
+  std::cout << (M * A.transpose() * M * A) << std::endl << std::endl;
+  // assert( (M * A.transpose() * M * A) == MatrixXd::Identity(6, 6) );
 
   // symmetry
   // condition: A = M transp(A) M
@@ -928,7 +936,11 @@ MatrixXd versorToMatrix(const l3ga &R)
     }
   }
 
-  testTransformation(basis, R, transform);
+  // convert to the unit basis
+  transform = Q * transform * Q;
+  std::cout << transform << std::endl << std::endl;
+
+  //testTransformation(basis, R, transform);
   
   return transform;
 }
