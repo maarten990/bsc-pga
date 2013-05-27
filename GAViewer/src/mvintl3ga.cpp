@@ -48,7 +48,7 @@ p3ga cross_product(p3ga x, p3ga y);
 p3ga point_on_line(p3ga x, GAIM_FLOAT t);
 
 MatrixXd versorToMatrix(const l3ga &R);
-void eigenVectors(MatrixXd A);
+void regulusParameters(VectorXd *axis, const l3ga &X);
 
 int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
   const GAIM_FLOAT epsilon = 1e-6; // rather arbitrary limit on fp-noise
@@ -555,11 +555,25 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
            * scalar0: angle
            * vector0: axis
            */
-          e3ga axis;
-          double angle;
-          MatrixXd transform = versorToMatrix(X);
-          eigenVectors(transform);
-          //regulusParameters(&axis, &angle, X, factors);
+          VectorXd axis;
+          regulusParameters(&axis, X);
+
+          // null axis = [e01, e02, e03, e12, e23, e31]
+          // unit axis = [e01+e23, e02+e31, e03+e12, e01-e23, e02-e31, e03-e12] / sqrt(2)
+          VectorXd nullAxis(6);
+
+          // convert the axis to an l3ga object
+          MatrixXd Q = (1.0 / sqrt(2)) *
+            (MatrixXd(6, 6) <<
+             MatrixXd::Identity(3, 3), MatrixXd::Identity(3, 3),
+             MatrixXd::Identity(3, 3), -MatrixXd::Identity(3, 3)).finished();
+          axis = Q * axis * Q;
+          l3ga axisGA(1, axis[0], axis[1], axis[2], axis[3], axis[4], axis[5]);
+
+          m_vector[0][0] = axis[GRADE1][L3GA_E01];
+          m_vector[0][1] = axis[GRADE1][L3GA_E02];
+          m_vector[0][2] = axis[GRADE1][L3GA_E03];
+          printf("%f, %f, %f\n", m_vector[0][0], m_vector[0][1], m_vector[0][2]);
 
           m_valid = 1;
         }
@@ -950,12 +964,22 @@ MatrixXd versorToMatrix(const l3ga &R)
   return transform;
 }
 
-void eigenVectors(MatrixXd A)
+void regulusParameters(VectorXd *axis, const l3ga &X)
 {
-  Eigen::EigenSolver<MatrixXd> eigen(A);
+  MatrixXd vectors;
+  VectorXd values;
+
+  MatrixXd transform = versorToMatrix(X);
+
+  // obtain eigenvalues and vectors
+  Eigen::EigenSolver<MatrixXd> eigen(transform);
+
+  // look for eigenvalue 1, whose corresponding eigenvector is the main axis
   for (int i = 0; i < 6; ++i) {
-    std::cout << "Eigenvalue/vector pair " << i << ": " << std::endl;
-    std::cout << "Value: " << eigen.eigenvalues()(i) << std::endl;
-    std::cout << "Vector: " << eigen.eigenvectors().col(i).transpose() << std::endl << std::endl;
+    if (eigen.eigenvalues()[i].real() > 0.99 && eigen.eigenvalues()[i].real() < 1.01) {
+      //std::cout << eigen.eigenvectors().col(i).transpose() << std::endl;
+       *axis = eigen.eigenvectors().col(i).transpose();
+       break;
+    }
   }
 }
