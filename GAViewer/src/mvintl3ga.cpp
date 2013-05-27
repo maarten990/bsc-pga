@@ -555,24 +555,16 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
            * scalar0: angle
            * vector0: axis
            */
-          VectorXd axis;
+          VectorXd axis(6);
           regulusParameters(&axis, X);
 
-          // null axis = [e01, e02, e03, e12, e23, e31]
-          // unit axis = [e01+e23, e02+e31, e03+e12, e01-e23, e02-e31, e03-e12] / sqrt(2)
-          VectorXd nullAxis(6);
+          // null basis = [e01, e02, e03, e12, e23, e31]
+          // unit basis = [e01+e23, e02+e31, e03+e12, e01-e23, e02-e31, e03-e12] / sqrt(2)
 
-          // convert the axis to an l3ga object
-          MatrixXd Q = (1.0 / sqrt(2)) *
-            (MatrixXd(6, 6) <<
-             MatrixXd::Identity(3, 3), MatrixXd::Identity(3, 3),
-             MatrixXd::Identity(3, 3), -MatrixXd::Identity(3, 3)).finished();
-          axis = Q * axis * Q;
-          l3ga axisGA(1, axis[0], axis[1], axis[2], axis[3], axis[4], axis[5]);
-
-          m_vector[0][0] = axis[GRADE1][L3GA_E01];
-          m_vector[0][1] = axis[GRADE1][L3GA_E02];
-          m_vector[0][2] = axis[GRADE1][L3GA_E03];
+          // assign the elements e01, e02 and e03 to the output vector
+          m_vector[0][0] = axis[0];
+          m_vector[0][1] = axis[1];
+          m_vector[0][2] = axis[2];
           printf("%f, %f, %f\n", m_vector[0][0], m_vector[0][1], m_vector[0][2]);
 
           m_valid = 1;
@@ -957,7 +949,7 @@ MatrixXd versorToMatrix(const l3ga &R)
   }
 
   // convert to the unit basis
-  transform = Q * transform * Q;
+  //transform = Q * transform * Q;
 
   //testTransformation(basis, R, transform);
   
@@ -977,9 +969,17 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
   // look for eigenvalue 1, whose corresponding eigenvector is the main axis
   for (int i = 0; i < 6; ++i) {
     if (eigen.eigenvalues()[i].real() > 0.99 && eigen.eigenvalues()[i].real() < 1.01) {
-      //std::cout << eigen.eigenvectors().col(i).transpose() << std::endl;
-       *axis = eigen.eigenvectors().col(i).transpose();
-       break;
+      *axis = eigen.eigenvectors().col(i).real();
     }
   }
 }
+
+
+
+
+
+
+
+
+
+

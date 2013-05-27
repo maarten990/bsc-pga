@@ -447,7 +447,7 @@ void glApplyRotor(e3ga rotor)
   glMultMatrixf(matrix);
 }
 
-int drawRegulus(e3ga axis, double slant) {
+int drawRegulus(e3ga &axis, double slant) {
   TubeDraw &T = gui_state->m_tubeDraw;
   e3ga plane = axis.dual();
   e3ga rotor;

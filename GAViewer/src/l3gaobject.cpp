@@ -250,6 +250,7 @@ int l3gaObject::draw(glwindow *window) {
   double dir[3] = {1.0, 0.0, 0.0};
 
   if (m_int.blade()) {
+    e3ga axis;
     switch (m_int.type()) {
       case MVI_ZERO:
         // don't draw anything
@@ -338,7 +339,13 @@ int l3gaObject::draw(glwindow *window) {
         drawVector(m_int.m_point[1], dir, 1.0);
         break;
       case MVI_REGULUS:
-        drawRegulus(e3ga::e3, M_PI / 4);
+        axis = e3ga(2,
+                    m_int.m_vector[0][0],
+                    m_int.m_vector[0][1],
+                    m_int.m_vector[0][2]);
+        axis.print();
+
+        drawRegulus(axis, M_PI / 4);
       case MVI_SPACE:
         // don't draw anything
       default:
