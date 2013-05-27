@@ -881,7 +881,7 @@ MatrixXd Q = (1.0 / sqrt(2)) *
 
 void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
 {
-  /*
+  
   // check if the basis vectors transform properly
   for (int i = 0; i < 6; ++i) {
     VectorXd b = basis.col(i);
@@ -900,7 +900,6 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
 
     assert(bgatv == bt);
   }
-  */
 
   // construct the metric matrix for the null basis
   MatrixXd M(6, 6);
@@ -910,7 +909,7 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
 
   // orthogonality check (Dorst unreleased paper, section 3.7)
   std::cout << (M * A.transpose() * M * A) << std::endl << std::endl;
-  // assert( (M * A.transpose() * M * A) == MatrixXd::Identity(6, 6) );
+  assert( (M * A.transpose() * M * A) == MatrixXd::Identity(6, 6) );
 
   // symmetry
   // condition: A = M transp(A) M
@@ -930,15 +929,21 @@ MatrixXd versorToMatrix(const l3ga &R)
     0, 0, 0, 0, 1, 0,
     0, 0, 0, 0, 0, 1;
 
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 6; ++j) {
-      transform.row(j)[i] = basis.row(j).dot( transformVersor(R, basis.col(i)) );
+      //transform.row(j)[i] = basis.row(j).dot( transformVersor(R, basis.col(i)) );
+      transform.row(j)[i] = (basis.row(j) * M * transformVersor(R, basis.col(i)))[0];
     }
   }
 
   // convert to the unit basis
   transform = Q * transform * Q;
-  std::cout << transform << std::endl << std::endl;
 
   //testTransformation(basis, R, transform);
   
@@ -948,6 +953,9 @@ MatrixXd versorToMatrix(const l3ga &R)
 void eigenVectors(MatrixXd A)
 {
   Eigen::EigenSolver<MatrixXd> eigen(A);
-  std::cout << "Eigenvectors: " << std::endl << eigen.eigenvectors() << std::endl;
-  std::cout << "Eigenvalues: " << std::endl << eigen.eigenvalues() << std::endl;
+  for (int i = 0; i < 6; ++i) {
+    std::cout << "Eigenvalue/vector pair " << i << ": " << std::endl;
+    std::cout << "Value: " << eigen.eigenvalues()(i) << std::endl;
+    std::cout << "Vector: " << eigen.eigenvectors().col(i).transpose() << std::endl << std::endl;
+  }
 }
