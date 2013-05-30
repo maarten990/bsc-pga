@@ -863,8 +863,15 @@ p3ga point_on_line(p3ga x, GAIM_FLOAT t) {
  */
 VectorXd transformVersor(const l3ga &R, VectorXd vec)
 {
-  l3ga beforeGA(6, vec[0], vec[1], vec[2], vec[3], vec[4], vec[5]),
-    afterGA;
+  l3ga beforeGA =
+    (vec[0] * l3ga::e01) +
+    (vec[1] * l3ga::e02) +
+    (vec[2] * l3ga::e03) +
+    (vec[3] * l3ga::e12) +
+    (vec[4] * l3ga::e23) +
+    (vec[5] * l3ga::e31);
+
+  l3ga afterGA;
 
   afterGA = (R.inverse() * beforeGA * R);
 
@@ -893,8 +900,15 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
     VectorXd b = basis.col(i);
     VectorXd bt = A * b;
 
-    l3ga bga(6, b[0], b[1], b[2], b[3], b[4], b[5]);
-    l3ga bgat = (-R * bga * R) / (R * R);
+    l3ga bga =
+      (b[0] * l3ga::e01) +
+      (b[1] * l3ga::e02) +
+      (b[2] * l3ga::e03) +
+      (b[3] * l3ga::e12) +
+      (b[4] * l3ga::e23) +
+      (b[5] * l3ga::e31);
+
+    l3ga bgat = R.inverse() * bga * R;
     VectorXd bgatv(6);
     bgatv <<
       bgat[GRADE1][L3GA_E01],
@@ -904,6 +918,8 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
       bgat[GRADE1][L3GA_E23],
       bgat[GRADE1][L3GA_E31];
 
+    std::cout << bgatv.transpose() << std::endl;
+    std::cout << bt.transpose() << std::endl;
     assert(bgatv == bt);
   }
 
@@ -911,7 +927,7 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
   MatrixXd M(6, 6);
   M <<
     MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3),
-    MatrixXd::Zero(3, 3),    -MatrixXd::Identity(3, 3);
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3);
 
   // orthogonality check (Dorst unreleased paper, section 3.7)
   std::cout << (M * A.transpose() * M * A) << std::endl << std::endl;
@@ -924,16 +940,11 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
   assert( (M * A.transpose() * M) == A );
 }
 
+/* Geometric Algebra For Computer Science, page 114 */
 MatrixXd versorToMatrix(const l3ga &R)
 {
   MatrixXd basis(6, 6), transform(6, 6);
-  basis <<
-    1, 0, 0, 0, 0, 0,
-    0, 1, 0, 0, 0, 0,
-    0, 0, 1, 0, 0, 0,
-    0, 0, 0, 1, 0, 0,
-    0, 0, 0, 0, 1, 0,
-    0, 0, 0, 0, 0, 1;
+  basis << MatrixXd::Identity(6, 6);
 
   // construct the metric matrix for the null basis
   MatrixXd M(6, 6);
@@ -943,15 +954,12 @@ MatrixXd versorToMatrix(const l3ga &R)
 
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 6; ++j) {
-      //transform.row(j)[i] = basis.row(j).dot( transformVersor(R, basis.col(i)) );
-      transform.row(j)[i] = (basis.row(j) * M * transformVersor(R, basis.col(i)))[0];
+      // take the 0th element because this returns a vector
+      transform.row(j)[i] = (transformVersor(R, basis.col(i)).transpose() * M * basis.row(j).transpose())[0];
     }
   }
 
-  // convert to the unit basis
-  //transform = Q * transform * Q;
-
-  //testTransformation(basis, R, transform);
+  testTransformation(basis, R, transform);
   
   return transform;
 }
