@@ -926,8 +926,8 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
   // construct the metric matrix for the null basis
   MatrixXd M(6, 6);
   M <<
-    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3),
-    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3);
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
 
   // orthogonality check (Dorst unreleased paper, section 3.7)
   std::cout << (M * A.transpose() * M * A) << std::endl << std::endl;
@@ -955,7 +955,7 @@ MatrixXd versorToMatrix(const l3ga &R)
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 6; ++j) {
       // take the 0th element because this returns a vector
-      transform.row(j)[i] = (transformVersor(R, basis.col(i)).transpose() * M * basis.row(j).transpose())[0];
+      transform(j, i) = (transformVersor(R, basis.col(i)).transpose() * M * basis.row(j).transpose())[0];
     }
   }
 
