@@ -859,43 +859,39 @@ p3ga point_on_line(p3ga x, GAIM_FLOAT t) {
   return (cross_product(moment(x), direction(x)) + (t * direction(x)) + (direction(x) * direction(x) * p3ga::e0)) / (direction(x) * direction(x));
 }
 
-// turns a 6D vector on the {e01, e02, e03, e12, e23, e31} basis to an l3ga
+// turns an l3ga object to a 6D vector on the {e01, e02, e03, e23, e31, e12}
+// basis
+VectorXd nullGAToVector(const l3ga &ga)
+{
+  return (VectorXd(6) <<
+          ga[GRADE1][L3GA_E01],
+          ga[GRADE1][L3GA_E02],
+          ga[GRADE1][L3GA_E03],
+          ga[GRADE1][L3GA_E23],
+          ga[GRADE1][L3GA_E31],
+          ga[GRADE1][L3GA_E12]).finished();
+}
+
+// turns a 6D vector on the {e01, e02, e03, e23, e31, e12} basis to an l3ga
 // object
-l3ga l3gaNullBasis(const VectorXd &vec)
+l3ga vectorToNullGA(const VectorXd &vec)
 {
   return (vec[0] * l3ga::e01) +
          (vec[1] * l3ga::e02) +
          (vec[2] * l3ga::e03) +
-         (vec[3] * l3ga::e12) +
-         (vec[4] * l3ga::e23) +
-         (vec[5] * l3ga::e31);
+         (vec[3] * l3ga::e23) +
+         (vec[4] * l3ga::e31) +
+         (vec[5] * l3ga::e12);
 }
 
-/* Basis of e01, e02, e03, e12, e23, e31
+/* Transforms a vector on on the null basis by a given regulus according to the
+ * regulus operator: R[x] = inv(R) x R
  */
 VectorXd transformVersor(const l3ga &R, VectorXd vec)
 {
-  l3ga beforeGA = l3gaNullBasis(vec);
-  l3ga afterGA;
-
-  afterGA = (R.inverse() * beforeGA * R);
-
-  VectorXd after(6);
-  after <<
-    afterGA[GRADE1][L3GA_E01],
-    afterGA[GRADE1][L3GA_E02],
-    afterGA[GRADE1][L3GA_E03],
-    afterGA[GRADE1][L3GA_E12],
-    afterGA[GRADE1][L3GA_E23],
-    afterGA[GRADE1][L3GA_E31];
-
-  return after;
+  l3ga ga = vectorToNullGA(vec);
+  return nullGAToVector(R.inverse() * ga * R);
 }
-
-MatrixXd Q = (1.0 / sqrt(2)) *
-  (MatrixXd(6, 6) <<
-   MatrixXd::Identity(3, 3), MatrixXd::Identity(3, 3),
-   MatrixXd::Identity(3, 3), -MatrixXd::Identity(3, 3)).finished();
 
 void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
 {
@@ -903,22 +899,13 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
   // check if the basis vectors transform properly
   for (int i = 0; i < 6; ++i) {
     VectorXd b = basis.col(i);
-    
-    // transform the vector according to GA4CS page 115
     VectorXd bt = A * b;
 
-    l3ga bga = l3gaNullBasis(b);
+    l3ga bga = vectorToNullGA(b);
     l3ga bgat = R.inverse() * bga * R;
-    VectorXd bgatv(6);
-    bgatv <<
-      bgat[GRADE1][L3GA_E01],
-      bgat[GRADE1][L3GA_E02],
-      bgat[GRADE1][L3GA_E03],
-      bgat[GRADE1][L3GA_E12],
-      bgat[GRADE1][L3GA_E23],
-      bgat[GRADE1][L3GA_E31];
+    VectorXd bgatv = nullGAToVector(bgat);
 
-    //assert(bgatv == bt);
+    assert(bgatv == bt);
   }
 
   // construct the metric matrix for the null basis
@@ -927,14 +914,12 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
     MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
     MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
 
-  // orthogonality check (Dorst unreleased paper, section 3.7)
-  std::cout << "M * A.T * M * A\n" << (M * A.transpose() * M * A) << std::endl << std::endl;
-  assert( (M * A.transpose() * M * A) == MatrixXd::Identity(6, 6) );
-
   // symmetry
   // condition: A = M transp(A) M
-  std::cout << (M * A.transpose() * M) << std::endl;
   assert( (M * A.transpose() * M) == A );
+
+  // orthogonality check (Dorst unreleased paper, section 3.7)
+  assert( (M * A.transpose() * M * A) == MatrixXd::Identity(6, 6) );
 }
 
 /* Geometric Algebra For Computer Science, page 114 */
@@ -952,11 +937,9 @@ MatrixXd versorToMatrix(const l3ga &R)
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 6; ++j) {
       // take the 0th element because this returns a vector
-      transform(j, i) = (transformVersor(R, basis.col(i)).transpose() * M * basis.row(j).transpose())[0];
+      transform(j, i) = (basis.row(j) * transformVersor(R, basis.col(i)) )[0];
     }
   }
-
-  std::cout << "Transform:\n" << transform << std::endl << std::endl;
 
   testTransformation(basis, R, transform);
   
@@ -973,12 +956,19 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
   // obtain eigenvalues and vectors
   Eigen::EigenSolver<MatrixXd> eigen(transform);
 
+  for (int i = 0; i < 6; ++i) {
+    std::cout << "Eigenvalue: " << eigen.eigenvalues()[i] << std::endl;
+    std::cout << "Eigenvector: " << eigen.eigenvectors().col(i).transpose() << std::endl << std::endl;
+  }
+
+  /*
   // look for eigenvalue 1, whose corresponding eigenvector is the main axis
   for (int i = 0; i < 6; ++i) {
     if (eigen.eigenvalues()[i].real() > 0.99 && eigen.eigenvalues()[i].real() < 1.01) {
       *axis = eigen.eigenvectors().col(i).real();
     }
   }
+  */
 }
 
 
