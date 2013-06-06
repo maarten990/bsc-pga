@@ -558,14 +558,13 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           VectorXd axis(6);
           regulusParameters(&axis, X);
 
-          // null basis = [e01, e02, e03, e12, e23, e31]
+          // null basis = [e01, e02, e03, e23, e31, e12]
           // unit basis = [e01+e23, e02+e31, e03+e12, e01-e23, e02-e31, e03-e12] / sqrt(2)
 
           // assign the elements e01, e02 and e03 to the output vector
           m_vector[0][0] = axis[0];
           m_vector[0][1] = axis[1];
           m_vector[0][2] = axis[2];
-          printf("%f, %f, %f\n", m_vector[0][0], m_vector[0][1], m_vector[0][2]);
 
           m_valid = 1;
         }
@@ -916,10 +915,15 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
 
   // symmetry
   // condition: A = M transp(A) M
-  assert( (M * A.transpose() * M) == A );
+  if( (M * A.transpose() * M) != A ) {
+    std::cout << "WARNING: transformation not symmetric" << std::endl;
+  };
 
   // orthogonality check (Dorst unreleased paper, section 3.7)
-  assert( (M * A.transpose() * M * A) == MatrixXd::Identity(6, 6) );
+  if( (M * A.transpose() * M * A) != MatrixXd::Identity(6, 6) ) {
+    std::cout << "WARNING: transformation not orthogonal" << std::endl;
+    std::cout << "M * A.T * M * A = " << std::endl << M * A.transpose() * M * A << std::endl;
+  }
 }
 
 /* Geometric Algebra For Computer Science, page 114 */
@@ -955,20 +959,38 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
 
   // obtain eigenvalues and vectors
   Eigen::EigenSolver<MatrixXd> eigen(transform);
+  values  = eigen.eigenvalues().real();
+  vectors = eigen.eigenvectors().real();
+
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+  // there are three eigenvectors with corresponding eigenvalue 1
+  // either two of them square to 1, or two of them square to -1
+  // the odd one out corresponds to the main axis
+  std::vector<int> posSquared, negSquared;
 
   for (int i = 0; i < 6; ++i) {
-    std::cout << "Eigenvalue: " << eigen.eigenvalues()[i] << std::endl;
-    std::cout << "Eigenvector: " << eigen.eigenvectors().col(i).transpose() << std::endl << std::endl;
-  }
-
-  /*
-  // look for eigenvalue 1, whose corresponding eigenvector is the main axis
-  for (int i = 0; i < 6; ++i) {
-    if (eigen.eigenvalues()[i].real() > 0.99 && eigen.eigenvalues()[i].real() < 1.01) {
-      *axis = eigen.eigenvectors().col(i).real();
+    if (values[i] == 1) {
+      if ((vectors.col(i).transpose() * M * vectors.col(i))[0] > 0)
+        posSquared.push_back(i);
+      else
+        negSquared.push_back(i);
     }
   }
-  */
+
+  VectorXd ax;
+  if (posSquared.size() == 1)
+    *axis = vectors.col( posSquared[0] ).normalized();
+  else if (negSquared.size() == 1)
+    *axis = vectors.col( negSquared[0] ).normalized();
+  else {
+    std::cout << "Warning: No axis found. Defaulting to 0.";
+    *axis = VectorXd(6);
+  }
 }
 
 

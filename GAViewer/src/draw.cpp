@@ -466,12 +466,12 @@ int drawRegulus(e3ga &axis, double slant) {
 
   // draw a selection of the lines in the regulus
   for (double i = 0; i < 2 * M_PI; i += M_PI / 8) {
+    glPushMatrix();
     // rotate by i radians around the axis
     rotor = cos(i / 2) - plane * sin(i / 2);
     glApplyRotor(rotor);
 
     // rotate by the slant angle in the e2 ^ e3 plane
-    glPushMatrix();
     rotor = cos(slant / 2) - (e3ga::e2 ^ e3ga::e3) * sin(slant / 2);
     glApplyRotor(rotor);
 
