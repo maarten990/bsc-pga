@@ -568,7 +568,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
             axis[5] * (p3ga::e1 ^ p3ga::e2);
 
           //homogeneousAxis /= homogeneousAxis[GRADE1][P3GA_E0];
-          homogeneousAxis.print();
+          //homogeneousAxis.print();
 
           m_vector[0][0] = homogeneousAxis[GRADE2][P3GA_E1_E0];
           m_vector[0][1] = homogeneousAxis[GRADE2][P3GA_E2_E0];
@@ -1031,6 +1031,13 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
     std::cout << "posSquared: " << posSquared.size() << ", negSquared: "
               << negSquared.size() << std::endl;
     for (int i = 0; i < vectors.cols(); ++i) {
+      if ( (0.999999 < values[i] &&
+            values[i] < 1.000001) ) {
+        vectorToNullGA(vectors.col(i)).print();
+      }
+    }
+    /*
+    for (int i = 0; i < vectors.cols(); ++i) {
       vec = vectorToNullGA(vectors.col(i));
       std::cout << "Eigenvalue " << values[i] << ", eigenvectors ";
       vec.print();
@@ -1038,6 +1045,7 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
       (vec << vec).print();
       std::cout << std::endl;
     }
+    */
 
     *axis = VectorXd(6);
   }
