@@ -558,13 +558,21 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           VectorXd axis(6);
           regulusParameters(&axis, X);
 
-          // null basis = [e01, e02, e03, e23, e31, e12]
-          // unit basis = [e01+e23, e02+e31, e03+e12, e01-e23, e02-e31, e03-e12] / sqrt(2)
+          // convert the axis to p3ga (homogeneous 4D space) through the reversed embedding
+          p3ga homogeneousAxis =
+            axis[0] * (p3ga::e0 ^ p3ga::e1) +
+            axis[1] * (p3ga::e0 ^ p3ga::e2) +
+            axis[2] * (p3ga::e0 ^ p3ga::e3) +
+            axis[3] * (p3ga::e3 ^ p3ga::e3) +
+            axis[4] * (p3ga::e3 ^ p3ga::e1) +
+            axis[5] * (p3ga::e1 ^ p3ga::e2);
 
-          // assign the elements e01, e02 and e03 to the output vector
-          m_vector[0][0] = axis[0];
-          m_vector[0][1] = axis[1];
-          m_vector[0][2] = axis[2];
+          //homogeneousAxis /= homogeneousAxis[GRADE1][P3GA_E0];
+          homogeneousAxis.print();
+
+          m_vector[0][0] = homogeneousAxis[GRADE2][P3GA_E1_E0];
+          m_vector[0][1] = homogeneousAxis[GRADE2][P3GA_E2_E0];
+          m_vector[0][2] = homogeneousAxis[GRADE2][P3GA_E3_E0];
 
           m_valid = 1;
         }
@@ -883,6 +891,22 @@ l3ga vectorToNullGA(const VectorXd &vec)
          (vec[5] * l3ga::e12);
 }
 
+// Returns a copy of A where values very close to 0 are replaced with an actual
+// zero
+MatrixXd sanitize(const MatrixXd &A)
+{
+  MatrixXd As(A);
+  for (int i = 0; i < As.cols(); ++i) {
+    for (int j = 0; j < As.rows(); ++j) {
+      if ( (-0.000001 < As(j, i)) && (As(j, i) < 0.000001) ) {
+        As(j, i) = 0;
+      }
+    }
+  }
+
+  return As;
+}
+
 /* Transforms a vector on on the null basis by a given regulus according to the
  * regulus operator: R[x] = inv(R) x R
  */
@@ -904,7 +928,17 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
     l3ga bgat = R.inverse() * bga * R;
     VectorXd bgatv = nullGAToVector(bgat);
 
-    assert(bgatv == bt);
+    // filter out "almost 0" values
+    for (int i = 0; i < 6; ++i)
+      if ((bgatv[i] <  0.00001) &&
+          (bgatv[i] > -0.00001))
+        bgatv[i] = 0;
+        
+    if (bgatv != bt) {
+      std::cout << "WARNING: vector transformation incorrect" << std::endl;
+      std:: cout << bt.transpose() << std::endl;
+      std:: cout << bgatv.transpose() << std::endl << std::endl;
+    }
   }
 
   // construct the metric matrix for the null basis
@@ -915,14 +949,17 @@ void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
 
   // symmetry
   // condition: A = M transp(A) M
-  if( (M * A.transpose() * M) != A ) {
-    std::cout << "WARNING: transformation not symmetric" << std::endl;
+  if( sanitize(M * A.transpose() * M) != A ) {
+    std::cout << "WARNING: transformation not symmetric" << std::endl << std::endl;
+    std::cout << "Transformation: " << std::endl;
+    std::cout << A << std::endl << std::endl;
   };
 
   // orthogonality check (Dorst unreleased paper, section 3.7)
-  if( (M * A.transpose() * M * A) != MatrixXd::Identity(6, 6) ) {
+  if( sanitize(M * A.transpose() * M * A) != MatrixXd::Identity(6, 6) ) {
     std::cout << "WARNING: transformation not orthogonal" << std::endl;
-    std::cout << "M * A.T * M * A = " << std::endl << M * A.transpose() * M * A << std::endl;
+    std::cout << "M * A.T * M * A = " << std::endl
+              << sanitize(M * A.transpose() * M * A) << std::endl << std::endl;
   }
 }
 
@@ -945,7 +982,8 @@ MatrixXd versorToMatrix(const l3ga &R)
     }
   }
 
-  testTransformation(basis, R, transform);
+  transform = sanitize(transform);
+  //testTransformation(basis, R, transform);
   
   return transform;
 }
@@ -973,8 +1011,9 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
   // the odd one out corresponds to the main axis
   std::vector<int> posSquared, negSquared;
 
-  for (int i = 0; i < 6; ++i) {
-    if (values[i] == 1) {
+  for (int i = 0; i < vectors.cols(); ++i) {
+    if ( (0.999999 < values[i] &&
+          values[i] < 1.000001) ) {
       if ((vectors.col(i).transpose() * M * vectors.col(i))[0] > 0)
         posSquared.push_back(i);
       else
@@ -982,13 +1021,24 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
     }
   }
 
-  VectorXd ax;
   if (posSquared.size() == 1)
     *axis = vectors.col( posSquared[0] ).normalized();
   else if (negSquared.size() == 1)
     *axis = vectors.col( negSquared[0] ).normalized();
   else {
-    std::cout << "Warning: No axis found. Defaulting to 0.";
+    l3ga vec;
+    std::cout << "Warning: No axis found. Defaulting to 0." << std::endl;
+    std::cout << "posSquared: " << posSquared.size() << ", negSquared: "
+              << negSquared.size() << std::endl;
+    for (int i = 0; i < vectors.cols(); ++i) {
+      vec = vectorToNullGA(vectors.col(i));
+      std::cout << "Eigenvalue " << values[i] << ", eigenvectors ";
+      vec.print();
+      std::cout << "Square: ";
+      (vec << vec).print();
+      std::cout << std::endl;
+    }
+
     *axis = VectorXd(6);
   }
 }
