@@ -48,7 +48,7 @@ p3ga cross_product(p3ga x, p3ga y);
 p3ga point_on_line(p3ga x, GAIM_FLOAT t);
 
 MatrixXd versorToMatrix(const l3ga &R);
-void regulusParameters(VectorXd *axis, const l3ga &X);
+int regulusParameters(VectorXd *axis, const l3ga &X);
 
 int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
   const GAIM_FLOAT epsilon = 1e-6; // rather arbitrary limit on fp-noise
@@ -556,16 +556,15 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
            * vector0: axis
            */
           VectorXd axis(6);
-          regulusParameters(&axis, X);
+          int slope = regulusParameters(&axis, X);
 
-          // convert the axis to p3ga (homogeneous 4D space) through the reversed embedding
+          // convert the axis to p3ga (homogeneous 4D space) through the
+          // reversed embedding and taking the finite part of the result
           p3ga homogeneousAxis =
             axis[0] * (p3ga::e0 ^ p3ga::e1) +
             axis[1] * (p3ga::e0 ^ p3ga::e2) +
-            axis[2] * (p3ga::e0 ^ p3ga::e3) +
-            axis[3] * (p3ga::e3 ^ p3ga::e3) +
-            axis[4] * (p3ga::e3 ^ p3ga::e1) +
-            axis[5] * (p3ga::e1 ^ p3ga::e2);
+            axis[2] * (p3ga::e0 ^ p3ga::e3);
+          homogeneousAxis *= 2;
 
           //homogeneousAxis /= homogeneousAxis[GRADE1][P3GA_E0];
           //homogeneousAxis.print();
@@ -573,6 +572,8 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           m_vector[0][0] = homogeneousAxis[GRADE2][P3GA_E1_E0];
           m_vector[0][1] = homogeneousAxis[GRADE2][P3GA_E2_E0];
           m_vector[0][2] = homogeneousAxis[GRADE2][P3GA_E3_E0];
+
+          m_scalar[0] = (M_PI / 4.0) * slope;
 
           m_valid = 1;
         }
@@ -988,7 +989,7 @@ MatrixXd versorToMatrix(const l3ga &R)
   return transform;
 }
 
-void regulusParameters(VectorXd *axis, const l3ga &X)
+int regulusParameters(VectorXd *axis, const l3ga &X)
 {
   MatrixXd vectors;
   VectorXd values;
@@ -1021,22 +1022,23 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
     }
   }
 
-  if (posSquared.size() == 1)
+  int slope;
+
+  if (posSquared.size() == 1) {
     *axis = vectors.col( posSquared[0] ).normalized();
-  else if (negSquared.size() == 1)
+    slope = 1;
+  }
+  else if (negSquared.size() == 1) {
     *axis = vectors.col( negSquared[0] ).normalized();
+    slope = -1;
+  }
+
   else {
     l3ga vec;
     std::cout << "Warning: No axis found. Defaulting to 0." << std::endl;
     std::cout << "posSquared: " << posSquared.size() << ", negSquared: "
               << negSquared.size() << std::endl;
-    for (int i = 0; i < vectors.cols(); ++i) {
-      if ( (0.999999 < values[i] &&
-            values[i] < 1.000001) ) {
-        vectorToNullGA(vectors.col(i)).print();
-      }
-    }
-    /*
+
     for (int i = 0; i < vectors.cols(); ++i) {
       vec = vectorToNullGA(vectors.col(i));
       std::cout << "Eigenvalue " << values[i] << ", eigenvectors ";
@@ -1045,10 +1047,12 @@ void regulusParameters(VectorXd *axis, const l3ga &X)
       (vec << vec).print();
       std::cout << std::endl;
     }
-    */
 
+    slope = 1;
     *axis = VectorXd(6);
   }
+
+  return slope;
 }
 
 

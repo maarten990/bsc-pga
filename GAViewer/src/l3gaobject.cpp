@@ -343,7 +343,8 @@ int l3gaObject::draw(glwindow *window) {
                (m_int.m_vector[0][1] * e3ga::e2) +
                (m_int.m_vector[0][2] * e3ga::e3);
 
-        drawRegulus(axis, M_PI / 4);
+
+        drawRegulus(axis, m_int.m_scalar[0]);
         break;
       case MVI_SPACE:
         // don't draw anything
