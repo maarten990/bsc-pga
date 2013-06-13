@@ -1025,31 +1025,42 @@ int regulusParameters(VectorXd *axis, const l3ga &X)
   int slope;
 
   if (posSquared.size() == 1) {
-    *axis = vectors.col( posSquared[0] ).normalized();
+    *axis = vectors.col( posSquared[0] );
     slope = 1;
   }
   else if (negSquared.size() == 1) {
-    *axis = vectors.col( negSquared[0] ).normalized();
+    *axis = vectors.col( negSquared[0] );
     slope = -1;
   }
 
+  // if all 3 eigenvectors with value 1 square to the same sign, use
+  // eigenvalue -1 instead (which corresponds to the dual regulus with the
+  // same axis, but different slant).
   else {
-    l3ga vec;
-    std::cout << "Warning: No axis found. Defaulting to 0." << std::endl;
-    std::cout << "posSquared: " << posSquared.size() << ", negSquared: "
-              << negSquared.size() << std::endl;
+    posSquared.clear(); negSquared.clear();
 
     for (int i = 0; i < vectors.cols(); ++i) {
-      vec = vectorToNullGA(vectors.col(i));
-      std::cout << "Eigenvalue " << values[i] << ", eigenvectors ";
-      vec.print();
-      std::cout << "Square: ";
-      (vec << vec).print();
-      std::cout << std::endl;
+      if ( (-0.999999 > values[i] &&
+            values[i] > -1.000001) ) {
+        if ((vectors.col(i).transpose() * M * vectors.col(i))[0] > 0)
+          posSquared.push_back(i);
+        else
+          negSquared.push_back(i);
+      }
+
     }
 
-    slope = 1;
-    *axis = VectorXd(6);
+    if (posSquared.size() == 1) {
+      *axis = vectors.col( posSquared[0] );
+      slope = -1;
+    }
+    else if (negSquared.size() == 1) {
+      *axis = vectors.col( negSquared[0] );
+      slope = 1;
+    }
+    else {
+      std::cout << "Error: Could not find axis." << std::endl;
+    }
   }
 
   return slope;
