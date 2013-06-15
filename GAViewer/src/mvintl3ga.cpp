@@ -553,7 +553,8 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
 
           /**
            * scalar0: angle
-           * vector0: axis
+           * point0 : axis location
+           * vector0: axis direction
            */
           VectorXd axis(6);
           int slope = regulusParameters(&axis, X);
@@ -989,6 +990,23 @@ MatrixXd versorToMatrix(const l3ga &R)
   return transform;
 }
 
+int findAssociate(int index, MatrixXd eigenvectors, VectorXd eigenvalues)
+{
+  VectorXd squared;
+  
+  for (int i = 0; i < eigenvectors.cols(); ++i) {
+    // no use comparing to yourself
+    if (i != index) {
+      squared = eigenvectors.col(i).transpose() * eigenvectors.col(index);
+      if (squared[0] == 0) {
+        return i;
+      }
+    }
+  }
+
+  return -1;
+}
+
 int regulusParameters(VectorXd *axis, const l3ga &X)
 {
   MatrixXd vectors;
@@ -1047,7 +1065,6 @@ int regulusParameters(VectorXd *axis, const l3ga &X)
         else
           negSquared.push_back(i);
       }
-
     }
 
     if (posSquared.size() == 1) {
