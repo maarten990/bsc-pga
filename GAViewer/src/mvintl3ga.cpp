@@ -31,6 +31,8 @@
 #include <eigen2/Eigen/Eigen>
 #include <eigen2/Eigen/src/QR/EigenSolver.h>
 
+#include <fstream>
+
 USING_PART_OF_NAMESPACE_EIGEN
 
 #define p3gaToL3ga(x) (consoleVariable("", x).castToL3ga()->l3())
@@ -990,14 +992,93 @@ MatrixXd versorToMatrix(const l3ga &R)
   return transform;
 }
 
-int findAssociate(int index, MatrixXd eigenvectors, VectorXd eigenvalues)
+int findOddOneOut(int *slope, int *index,
+                  MatrixXd &eigenvectors, VectorXd &eigenvalues)
 {
-  VectorXd squared;
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+  // there are three eigenvectors with corresponding eigenvalue 1
+  // either two of them square to 1, or two of them square to -1
+  // the odd one out corresponds to the main axis
+  std::vector<int> posSquared1, negSquared1,
+    posSquaredM1, negSquaredM1;
+
+  // find the squared values for each eigenvector
+  for (int i = 0; i < eigenvectors.cols(); ++i) {
+    if ( (0.999999 < eigenvalues[i] &&
+          eigenvalues[i] < 1.000001) ) {
+      if ((eigenvectors.col(i).transpose() * M * eigenvectors.col(i))[0] > 0)
+        posSquared1.push_back(i);
+      else
+        negSquared1.push_back(i);
+    }
+
+    else {
+      if ((eigenvectors.col(i).transpose() * M * eigenvectors.col(i))[0] > 0)
+        posSquaredM1.push_back(i);
+      else
+        negSquaredM1.push_back(i);
+    }
+  }
+
+  if (posSquared1.size() == 1) {
+    *index = posSquared1[0];
+    *slope = 1;
+  }
+
+  else if (negSquared1.size() == 1) {
+    *index =  negSquared1[0];
+    *slope = -1;
+  }
+
+  else if (posSquaredM1.size() == 1) {
+    *index =  posSquaredM1[0];
+    *slope = -1;
+  }
+  else if (negSquaredM1.size() == 1) {
+    *index =  negSquaredM1[0];
+    *slope = 1;
+  }
+
+  else {
+    return 1;
+  }
+
+  return 0;
+}
+
+bool differentSign(double x, double y)
+{
+  if ( (x < 0 && y >= 0) || (y < 0 && x >= 0) ) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+int findAssociate(int index, MatrixXd &eigenvectors, VectorXd &eigenvalues)
+{
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+  VectorXd squared, added;
   
   for (int i = 0; i < eigenvectors.cols(); ++i) {
     // no use comparing to yourself
-    if (i != index) {
-      squared = eigenvectors.col(i).transpose() * eigenvectors.col(index);
+    if (i != index && differentSign(eigenvalues[i], eigenvalues[index])) {
+      added = eigenvectors.col(i) + eigenvectors.col(index);
+      squared = added.transpose() * M * added;
+      vectorToNullGA(eigenvectors.col(i)).print();
+      std::cout << "dot" << std::endl;
+      vectorToNullGA(eigenvectors.col(index)).print();
+      std::cout << "is " << squared << std::endl << std::endl;
       if (squared[0] == 0) {
         return i;
       }
@@ -1019,76 +1100,29 @@ int regulusParameters(VectorXd *axis, const l3ga &X)
   values  = eigen.eigenvalues().real();
   vectors = eigen.eigenvectors().real();
 
-  // construct the metric matrix for the null basis
-  MatrixXd M(6, 6);
-  M <<
-    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
-    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
-
-  // there are three eigenvectors with corresponding eigenvalue 1
-  // either two of them square to 1, or two of them square to -1
-  // the odd one out corresponds to the main axis
-  std::vector<int> posSquared, negSquared;
-
-  for (int i = 0; i < vectors.cols(); ++i) {
-    if ( (0.999999 < values[i] &&
-          values[i] < 1.000001) ) {
-      if ((vectors.col(i).transpose() * M * vectors.col(i))[0] > 0)
-        posSquared.push_back(i);
-      else
-        negSquared.push_back(i);
-    }
+  int slope, index;
+  int status = findOddOneOut(&slope, &index,
+                             vectors, values);
+  if (status) {
+    // TODO: add logging
+    std::cout << "Error: Could not find axis." << std::endl;
   }
 
-  int slope;
-
-  if (posSquared.size() == 1) {
-    *axis = vectors.col( posSquared[0] );
-    slope = 1;
-  }
-  else if (negSquared.size() == 1) {
-    *axis = vectors.col( negSquared[0] );
-    slope = -1;
+  int associateIndex = findAssociate(index, vectors, values);
+  if (associateIndex == -1) {
+    // TODO: add logging
+    std::cout << "Error: Could not find associate." << std::endl;
   }
 
-  // if all 3 eigenvectors with value 1 square to the same sign, use
-  // eigenvalue -1 instead (which corresponds to the dual regulus with the
-  // same axis, but different slant).
-  else {
-    posSquared.clear(); negSquared.clear();
+  *axis = vectors.col(index) + vectors.col(associateIndex);
 
-    for (int i = 0; i < vectors.cols(); ++i) {
-      if ( (-0.999999 > values[i] &&
-            values[i] > -1.000001) ) {
-        if ((vectors.col(i).transpose() * M * vectors.col(i))[0] > 0)
-          posSquared.push_back(i);
-        else
-          negSquared.push_back(i);
-      }
-    }
-
-    if (posSquared.size() == 1) {
-      *axis = vectors.col( posSquared[0] );
-      slope = -1;
-    }
-    else if (negSquared.size() == 1) {
-      *axis = vectors.col( negSquared[0] );
-      slope = 1;
-    }
-    else {
-      std::cout << "Error: Could not find axis." << std::endl;
-    }
-  }
+  /* debug */
+  std::ofstream log;
+  log.open("log.log");
+  log << "Axis: " << axis->transpose() << std::endl;
+  log << "Axis component: " << vectors.col(index).transpose() << std::endl;
+  log << "Axis associate: " << vectors.col(associateIndex).transpose() << std::endl;
+  log.close();
 
   return slope;
 }
-
-
-
-
-
-
-
-
-
-
