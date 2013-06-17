@@ -1075,11 +1075,10 @@ int findAssociate(int index, MatrixXd &eigenvectors, VectorXd &eigenvalues)
     if (i != index && differentSign(eigenvalues[i], eigenvalues[index])) {
       added = eigenvectors.col(i) + eigenvectors.col(index);
       squared = added.transpose() * M * added;
-      vectorToNullGA(eigenvectors.col(i)).print();
-      std::cout << "dot" << std::endl;
-      vectorToNullGA(eigenvectors.col(index)).print();
-      std::cout << "is " << squared << std::endl << std::endl;
       if (squared[0] == 0) {
+        vectorToNullGA(added).print();
+        std::cout << "squared is " << squared << std::endl << std::endl;
+
         return i;
       }
     }
@@ -1112,6 +1111,17 @@ int regulusParameters(VectorXd *axis, const l3ga &X)
   if (associateIndex == -1) {
     // TODO: add logging
     std::cout << "Error: Could not find associate." << std::endl;
+  }
+
+  std::cout << "Eigenvectors (value, square, vector): " << std::endl;
+  for (int i = 0; i < vectors.cols(); ++i) {
+    MatrixXd M(6, 6);
+    M <<
+      MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+      MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+    std::cout << values[i] << ", " << vectors.col(i).transpose() * M * vectors.col(i) << ", ";
+    vectorToNullGA(vectors.col(i)).print();
   }
 
   *axis = vectors.col(index) + vectors.col(associateIndex);
