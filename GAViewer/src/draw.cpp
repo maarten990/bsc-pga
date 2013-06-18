@@ -447,7 +447,7 @@ void glApplyRotor(e3ga rotor)
   glMultMatrixf(matrix);
 }
 
-int drawRegulus(e3ga &axis, double slant) {
+int drawRegulus(e3ga &axis, double slant, double point[3]) {
   TubeDraw &T = gui_state->m_tubeDraw;
   e3ga plane = axis.dual();
   e3ga rotor;
@@ -459,6 +459,8 @@ int drawRegulus(e3ga &axis, double slant) {
 
   // green used for 3-blades
   glColor3d(0, 1, 0);
+
+  if (point) glTranslated(point[0], point[1], point[2]);
 
   // rotate e3 to the axis/plane normal
   e3gaRve3(rotor, axis);

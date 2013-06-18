@@ -51,6 +51,7 @@ p3ga point_on_line(p3ga x, GAIM_FLOAT t);
 
 MatrixXd versorToMatrix(const l3ga &R);
 int regulusParameters(VectorXd *axis, const l3ga &X);
+l3ga vectorToNullGA(const VectorXd &vec);
 
 int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
   const GAIM_FLOAT epsilon = 1e-6; // rather arbitrary limit on fp-noise
@@ -571,10 +572,20 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
 
           //homogeneousAxis /= homogeneousAxis[GRADE1][P3GA_E0];
           //homogeneousAxis.print();
+          l3ga axisGA = vectorToNullGA(axis);
 
-          m_vector[0][0] = homogeneousAxis[GRADE2][P3GA_E1_E0];
-          m_vector[0][1] = homogeneousAxis[GRADE2][P3GA_E2_E0];
-          m_vector[0][2] = homogeneousAxis[GRADE2][P3GA_E3_E0];
+          // weight
+          m_scalar[1] = sqrt(axisGA[GRADE1][L3GA_E01] * axisGA[GRADE1][L3GA_E01] + axisGA[GRADE1][L3GA_E02] * axisGA[GRADE1][L3GA_E02] + axisGA[GRADE1][L3GA_E03] * axisGA[GRADE1][L3GA_E03]);
+
+          // direction
+          m_vector[0][0] = axisGA[GRADE1][L3GA_E01] / m_scalar[1];
+          m_vector[0][1] = axisGA[GRADE1][L3GA_E02] / m_scalar[1];
+          m_vector[0][2] = axisGA[GRADE1][L3GA_E03] / m_scalar[1];
+
+          // offset
+          m_point[0][0] = ((axisGA[GRADE1][L3GA_E12] * m_vector[0][1]) - (axisGA[GRADE1][L3GA_E31] * m_vector[0][2])) / m_scalar[1];
+          m_point[0][1] = ((axisGA[GRADE1][L3GA_E23] * m_vector[0][2]) - (axisGA[GRADE1][L3GA_E12] * m_vector[0][0])) / m_scalar[1];
+          m_point[0][2] = ((axisGA[GRADE1][L3GA_E31] * m_vector[0][0]) - (axisGA[GRADE1][L3GA_E23] * m_vector[0][1])) / m_scalar[1];
 
           m_scalar[0] = (M_PI / 4.0) * slope;
 
