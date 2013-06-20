@@ -552,7 +552,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
         }
         else if ( (X * X).scalar() != 0) {
           m_type |= MVI_REGULUS;
-          //printf("regulus\n");
+          printf("regulus\n");
 
           /**
            * scalar0: angle
@@ -1110,9 +1110,29 @@ int regulusParameters(VectorXd *axis, const l3ga &X)
   values  = eigen.eigenvalues().real();
   vectors = eigen.eigenvectors().real();
 
+  std::cout << "Eigenvectors (value, square, vector): " << std::endl;
+  for (int i = 0; i < vectors.cols(); ++i) {
+    MatrixXd M(6, 6);
+    M <<
+      MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+      MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+    std::cout << values[i] << ", " << vectors.col(i).transpose() * M * vectors.col(i) << ", ";
+    vectorToNullGA(vectors.col(i)).print();
+  }
+
+  
+  // multiply each vector by -1 if its eigenvalue is -1
+  for (int i = 0; i < vectors.cols(); ++i) {
+    if (values[i] == -1) {
+      vectors.col(i) *= -1;
+    }
+  }
+
   int slope, index;
   int status = findOddOneOut(&slope, &index,
                              vectors, values);
+
   if (status) {
     // TODO: add logging
     std::cout << "Error: Could not find axis." << std::endl;
@@ -1124,16 +1144,6 @@ int regulusParameters(VectorXd *axis, const l3ga &X)
     std::cout << "Error: Could not find associate." << std::endl;
   }
 
-  std::cout << "Eigenvectors (value, square, vector): " << std::endl;
-  for (int i = 0; i < vectors.cols(); ++i) {
-    MatrixXd M(6, 6);
-    M <<
-      MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
-      MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
-
-    std::cout << values[i] << ", " << vectors.col(i).transpose() * M * vectors.col(i) << ", ";
-    vectorToNullGA(vectors.col(i)).print();
-  }
 
   *axis = vectors.col(index) + vectors.col(associateIndex);
 
