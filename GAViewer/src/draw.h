@@ -156,5 +156,6 @@ int drawIdealPoint(const GAIM_FLOAT direction[3], const GAIM_FLOAT weight, int m
 /* Applies a rotor to the currently selected OpenGL matrix*/
 void glApplyRotor();
 
-int drawRegulus(e3ga &axis, double slant, double point[]);
+int drawRegulus(e3ga &axis, double slant, double point[],
+                double axis1[], double axis2[]);
 #endif /* _DRAW_FUNCTIONS_H_ */

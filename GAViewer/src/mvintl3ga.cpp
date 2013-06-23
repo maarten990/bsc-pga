@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <vector>
 #include <iostream>
+#include <map>
 #include <assert.h>
 
 #include "object.h"
@@ -30,8 +31,6 @@
 #include <eigen2/Eigen/Core>
 #include <eigen2/Eigen/Eigen>
 #include <eigen2/Eigen/src/QR/EigenSolver.h>
-
-#include <fstream>
 
 USING_PART_OF_NAMESPACE_EIGEN
 
@@ -50,8 +49,11 @@ p3ga cross_product(p3ga x, p3ga y);
 p3ga point_on_line(p3ga x, GAIM_FLOAT t);
 
 MatrixXd versorToMatrix(const l3ga &R);
-int regulusParameters(VectorXd *axis, const l3ga &X);
+int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
+                      VectorXd *axis2);
 l3ga vectorToNullGA(const VectorXd &vec);
+VectorXd nullGAToVector(const l3ga &ga);
+void l3gaLineDirectionOffset(GAIM_FLOAT *offset, GAIM_FLOAT *direction, l3ga line);
 
 int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
   const GAIM_FLOAT epsilon = 1e-6; // rather arbitrary limit on fp-noise
@@ -555,40 +557,34 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           printf("regulus\n");
 
           /**
-           * scalar0: angle
+           * scalar0: slant
            * point0 : axis location
-           * vector0: axis direction
+           * vector0: main axis direction
+           * vector1: axis1 direction
+           * vector2: axis2 direction
            */
-          VectorXd axis(6);
-          int slope = regulusParameters(&axis, X);
+          VectorXd axis(6), axis1(6), axis2(6);
+          int slope = regulusParameters(X, &axis, &axis1, &axis2);
 
-          // convert the axis to p3ga (homogeneous 4D space) through the
-          // reversed embedding and taking the finite part of the result
-          p3ga homogeneousAxis =
-            axis[0] * (p3ga::e0 ^ p3ga::e1) +
-            axis[1] * (p3ga::e0 ^ p3ga::e2) +
-            axis[2] * (p3ga::e0 ^ p3ga::e3);
-          homogeneousAxis *= 2;
+          l3ga mainAxisGA = vectorToNullGA(axis),
+            axis1GA = vectorToNullGA(axis1),
+            axis2GA = vectorToNullGA(axis2);
+          
+          std::cout << "Main axis: ";
+          mainAxisGA.print();
+          std::cout << "Axis 1: ";
+          axis1GA.print();
+          std::cout << "Axis 2: ";
+          axis2GA.print();
+          std::cout << std::endl;
 
-          //homogeneousAxis /= homogeneousAxis[GRADE1][P3GA_E0];
-          //homogeneousAxis.print();
-          l3ga axisGA = vectorToNullGA(axis);
-
-          // weight
-          m_scalar[1] = sqrt(axisGA[GRADE1][L3GA_E01] * axisGA[GRADE1][L3GA_E01] + axisGA[GRADE1][L3GA_E02] * axisGA[GRADE1][L3GA_E02] + axisGA[GRADE1][L3GA_E03] * axisGA[GRADE1][L3GA_E03]);
-
-          // direction
-          m_vector[0][0] = axisGA[GRADE1][L3GA_E01] / m_scalar[1];
-          m_vector[0][1] = axisGA[GRADE1][L3GA_E02] / m_scalar[1];
-          m_vector[0][2] = axisGA[GRADE1][L3GA_E03] / m_scalar[1];
-
-          // offset
-          m_point[0][0] = ((axisGA[GRADE1][L3GA_E12] * m_vector[0][1]) - (axisGA[GRADE1][L3GA_E31] * m_vector[0][2])) / m_scalar[1];
-          m_point[0][1] = ((axisGA[GRADE1][L3GA_E23] * m_vector[0][2]) - (axisGA[GRADE1][L3GA_E12] * m_vector[0][0])) / m_scalar[1];
-          m_point[0][2] = ((axisGA[GRADE1][L3GA_E31] * m_vector[0][0]) - (axisGA[GRADE1][L3GA_E23] * m_vector[0][1])) / m_scalar[1];
+          l3gaLineDirectionOffset(m_point[0], m_vector[3], mainAxisGA);
+          std::cout << m_vector[3][0] << " " << m_vector[3][1] <<
+            " " << m_vector[3][2] << std::endl;
+          l3gaLineDirectionOffset(m_point[1], m_vector[1], axis1GA);
+          l3gaLineDirectionOffset(m_point[2], m_vector[2], axis1GA);
 
           m_scalar[0] = (M_PI / 4.0) * slope;
-
           m_valid = 1;
         }
         else {
@@ -1078,27 +1074,86 @@ int findAssociate(int index, MatrixXd &eigenvectors, VectorXd &eigenvalues)
   M <<
     MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
     MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
-
-  VectorXd squared, added;
   
-  for (int i = 0; i < eigenvectors.cols(); ++i) {
-    // no use comparing to yourself
-    if (i != index && differentSign(eigenvalues[i], eigenvalues[index])) {
-      added = eigenvectors.col(i) + eigenvectors.col(index);
-      squared = added.transpose() * M * added;
-      if (squared[0] == 0) {
-        vectorToNullGA(added).print();
-        std::cout << "squared is " << squared << std::endl << std::endl;
+  std::map<int, int> componentCounts;
 
-        return i;
+  l3ga axis = vectorToNullGA(eigenvectors.col(index));
+  VectorXd normalized = nullGAToVector(axis / sqrt( fabs(*(axis * axis)[GRADE0]) ) );
+  VectorXd squared, added;
+ 
+  l3ga candidate;
+  VectorXd candidateNorm;
+
+  for (int i = 0; i < eigenvectors.cols(); ++i) {
+    // only compare to the eigenvectors with flipped sign
+    if (differentSign(eigenvalues[i], eigenvalues[index])) {
+      candidate = vectorToNullGA(eigenvectors.col(i));
+      candidateNorm = nullGAToVector(candidate /
+                                     sqrt( fabs(*(candidate * candidate)[GRADE0]) ) );
+
+      added = candidateNorm + normalized;
+      squared = added.transpose() * M * added;
+
+      // if the added components form a line, check how many grade 1 components it has
+      if ((squared[0] < 0.0000001) && (squared[0] > -0.0000001)) {
+        componentCounts[i] = 0;
+        if (added[0] != 0) componentCounts[i] += 1;
+        if (added[1] != 0) componentCounts[i] += 1;
+        if (added[2] != 0) componentCounts[i] += 1;
+        if (added[3] != 0) componentCounts[i] += 1;
+        if (added[4] != 0) componentCounts[i] += 1;
+        if (added[5] != 0) componentCounts[i] += 1;
       }
     }
   }
+  
+  if (componentCounts.empty())
+    return -1;
+  else {
+    int lowestInd, lowestComp = 999;
+    for (std::map<int, int>::iterator it = componentCounts.begin();
+         it != componentCounts.end(); ++it) {
+      if (it->second < lowestComp) {
+        lowestInd = it->first;
+        lowestComp = it->second;
+      }
+    }
 
-  return -1;
+    return lowestInd;
+  }
 }
 
-int regulusParameters(VectorXd *axis, const l3ga &X)
+/**
+ * Find the secondary axes.
+ * index1 and index2: pointers to which the axis indices will be written
+ * mainIndex: index of the main axis
+ */
+
+void secondaryAxes(int *index1, int *index2, int mainIndex,
+                  MatrixXd &eigenvectors, VectorXd &eigenvalues)
+{
+  int done = 0;
+
+  for (int i = 0; i < eigenvectors.cols(); ++i) {
+    if (eigenvalues[i] == eigenvalues[mainIndex] && i != mainIndex) {
+      switch (done) {
+      case 0:
+        *index1 = i;
+        done += 1;
+        break;
+      case 1:
+        *index2 = i;
+        done += 1;
+        break;
+      default:
+        return;
+      }
+    }
+  }
+}
+
+int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
+                      VectorXd *axis2)
 {
   MatrixXd vectors;
   VectorXd values;
@@ -1110,6 +1165,7 @@ int regulusParameters(VectorXd *axis, const l3ga &X)
   values  = eigen.eigenvalues().real();
   vectors = eigen.eigenvectors().real();
 
+  /*
   std::cout << "Eigenvectors (value, square, vector): " << std::endl;
   for (int i = 0; i < vectors.cols(); ++i) {
     MatrixXd M(6, 6);
@@ -1120,40 +1176,60 @@ int regulusParameters(VectorXd *axis, const l3ga &X)
     std::cout << values[i] << ", " << vectors.col(i).transpose() * M * vectors.col(i) << ", ";
     vectorToNullGA(vectors.col(i)).print();
   }
+  */
 
   
   // multiply each vector by -1 if its eigenvalue is -1
+  // appears to work well for most cases
   for (int i = 0; i < vectors.cols(); ++i) {
     if (values[i] == -1) {
       vectors.col(i) *= -1;
     }
   }
 
-  int slope, index;
-  int status = findOddOneOut(&slope, &index,
+  // find the column indices of the 3 axes
+  int slope, mainIndex, index1, index2;
+  int status = findOddOneOut(&slope, &mainIndex,
                              vectors, values);
+
+  secondaryAxes(&index1, &index2, mainIndex, vectors, values);
 
   if (status) {
     // TODO: add logging
-    std::cout << "Error: Could not find axis." << std::endl;
+    std::cout << "Error: Could not find mainAxis." << std::endl;
   }
 
-  int associateIndex = findAssociate(index, vectors, values);
-  if (associateIndex == -1) {
-    // TODO: add logging
+  int assocIndexMain = findAssociate(mainIndex, vectors, values);
+  int assocIndex1    = findAssociate(index1, vectors, values);
+  int assocIndex2    = findAssociate(index2, vectors, values);
+  if ((assocIndexMain == -1) || (assocIndex1 == -1) || (assocIndex2 == -1)) {
     std::cout << "Error: Could not find associate." << std::endl;
+    assert(false);
   }
 
+  std::cout << "Axis 1 base and eigenvalue: " << vectors.col(index1).transpose()
+            << ", " << values[index1] << std::endl;
 
-  *axis = vectors.col(index) + vectors.col(associateIndex);
-
-  /* debug */
-  std::ofstream log;
-  log.open("log.log");
-  log << "Axis: " << axis->transpose() << std::endl;
-  log << "Axis component: " << vectors.col(index).transpose() << std::endl;
-  log << "Axis associate: " << vectors.col(associateIndex).transpose() << std::endl;
-  log.close();
+  *mainAxis = vectors.col(mainIndex) + vectors.col(assocIndexMain);
+  *axis1 = vectors.col(index1) + vectors.col(assocIndex1);
+  *axis2 = vectors.col(index2) + vectors.col(assocIndex2);
 
   return slope;
+}
+
+// converts an l3ga line to it's offset and direction as arrays of 3 elements
+void l3gaLineDirectionOffset(GAIM_FLOAT *offset, GAIM_FLOAT *direction, l3ga line)
+{
+  // weight
+  double weight = sqrt(line[GRADE1][L3GA_E01] * line[GRADE1][L3GA_E01] + line[GRADE1][L3GA_E02] * line[GRADE1][L3GA_E02] + line[GRADE1][L3GA_E03] * line[GRADE1][L3GA_E03]);
+
+  // direction
+  direction[0] = line[GRADE1][L3GA_E01] / weight;
+  direction[1] = line[GRADE1][L3GA_E02] / weight;
+  direction[2] = line[GRADE1][L3GA_E03] / weight;
+
+  // offset
+  offset[0] = ((line[GRADE1][L3GA_E12] * direction[1]) - (line[GRADE1][L3GA_E31] * direction[2])) / weight;
+  offset[1] = ((line[GRADE1][L3GA_E23] * direction[2]) - (line[GRADE1][L3GA_E12] * direction[0])) / weight;
+  offset[2] = ((line[GRADE1][L3GA_E31] * direction[0]) - (line[GRADE1][L3GA_E23] * direction[1])) / weight;
 }
