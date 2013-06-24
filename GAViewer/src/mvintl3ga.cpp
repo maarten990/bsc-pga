@@ -578,11 +578,17 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           axis2GA.print();
           std::cout << std::endl;
 
+          double weight1 = sqrt(axis1GA[GRADE1][L3GA_E01] * axis1GA[GRADE1][L3GA_E01] + axis1GA[GRADE1][L3GA_E02] * axis1GA[GRADE1][L3GA_E02] + axis1GA[GRADE1][L3GA_E03] * axis1GA[GRADE1][L3GA_E03]);
+          double weight2 = sqrt(axis2GA[GRADE1][L3GA_E01] * axis2GA[GRADE1][L3GA_E01] + axis2GA[GRADE1][L3GA_E02] * axis2GA[GRADE1][L3GA_E02] + axis2GA[GRADE1][L3GA_E03] * axis2GA[GRADE1][L3GA_E03]);
+          std::cout << weight1 << ", " << weight2 << std::endl;
+
           l3gaLineDirectionOffset(m_point[0], m_vector[3], mainAxisGA);
           l3gaLineDirectionOffset(m_point[1], m_vector[1], axis1GA);
           l3gaLineDirectionOffset(m_point[2], m_vector[2], axis1GA);
 
           m_scalar[0] = (M_PI / 4.0) * slope;
+          m_scalar[1] = weight1;
+          m_scalar[2] = weight2;
           m_valid = 1;
         }
         else {

@@ -15,10 +15,10 @@ lineb = (-e01 + e12 + e03 + e23) / sqrt(2);
 linec = (-e02 + e12 + e03 + e31) / sqrt(2);
 
 S1 = e01 ^ e23;
-S01  = exp( (2 * S1) / 2);
+S01  = exp( (log(2) * S1) / 2);
 
 S2 = e02 ^ e31;
-S02 = exp( (log(2) * S2) / 2);
+S02 = exp( (log(3) * S2) / 2);
 
 T1 = e12 ^ e31;
 T  = exp( T1 / 2 );

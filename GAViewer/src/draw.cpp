@@ -448,7 +448,8 @@ void glApplyRotor(e3ga rotor)
 }
 
 int drawRegulus(e3ga &axis, double slant, double point[3],
-                double axis1[3], double axis2[3]) {
+                double axis1[3], double axis2[3],
+		double scaling1, double scaling2) {
   TubeDraw &T = gui_state->m_tubeDraw;
   e3ga plane = axis.dual();
   e3ga rotor;
@@ -461,6 +462,7 @@ int drawRegulus(e3ga &axis, double slant, double point[3],
   // green used for 3-blades
   glColor3d(0, 1, 0);
 
+  // translate to the offset
   if (point) glTranslated(point[0], point[1], point[2]);
 
   // rotate e3 to the axis/plane normal
@@ -470,6 +472,8 @@ int drawRegulus(e3ga &axis, double slant, double point[3],
   // draw a selection of the lines in the regulus
   for (double i = 0; i < 2 * M_PI; i += M_PI / 8) {
     glPushMatrix();
+    glScalef(scaling1, scaling2, 1);
+
     // rotate by i radians around the axis
     rotor = cos(i / 2) - plane * sin(i / 2);
     glApplyRotor(rotor);
