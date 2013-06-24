@@ -453,10 +453,6 @@ int drawRegulus(e3ga &axis, double slant, double point[3],
   e3ga plane = axis.dual();
   e3ga rotor;
 
-  printf("Axis: "); axis.print();
-  printf("Slant: %f\n", slant);
-  printf("Offset: %f, %f, %f\n", point[0], point[1], point[2]);
-
   // OpenGL boilerplate
   glMatrixMode(GL_MODELVIEW);
   glDisable(GL_LIGHTING);

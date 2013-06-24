@@ -1077,21 +1077,17 @@ int findAssociate(int index, MatrixXd &eigenvectors, VectorXd &eigenvalues)
   
   std::map<int, int> componentCounts;
 
-  l3ga axis = vectorToNullGA(eigenvectors.col(index));
-  VectorXd normalized = nullGAToVector(axis / sqrt( fabs(*(axis * axis)[GRADE0]) ) );
+  VectorXd axis = eigenvectors.col(index);
   VectorXd squared, added;
  
-  l3ga candidate;
-  VectorXd candidateNorm;
+  VectorXd candidate;
 
   for (int i = 0; i < eigenvectors.cols(); ++i) {
     // only compare to the eigenvectors with flipped sign
     if (differentSign(eigenvalues[i], eigenvalues[index])) {
-      candidate = vectorToNullGA(eigenvectors.col(i));
-      candidateNorm = nullGAToVector(candidate /
-                                     sqrt( fabs(*(candidate * candidate)[GRADE0]) ) );
+      candidate = eigenvectors.col(i);
 
-      added = candidateNorm + normalized;
+      added = candidate + axis;
       squared = added.transpose() * M * added;
 
       // if the added components form a line, check how many grade 1 components it has
@@ -1165,6 +1161,13 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   values  = eigen.eigenvalues().real();
   vectors = eigen.eigenvectors().real();
 
+  // normalize eigenvectors
+  for (int i = 0; i < vectors.cols(); ++i) {
+    l3ga temp = vectorToNullGA(vectors.col(i));
+    vectors.col(i) = nullGAToVector(temp / sqrt( fabs(*(temp * temp)[GRADE0]) ) );
+  }
+
+  // debug print
   /*
   std::cout << "Eigenvectors (value, square, vector): " << std::endl;
   for (int i = 0; i < vectors.cols(); ++i) {
@@ -1193,6 +1196,8 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
                              vectors, values);
 
   secondaryAxes(&index1, &index2, mainIndex, vectors, values);
+  std::cout << "Axis 1 component: " << vectors.col(index1).transpose() << std::endl;
+  std::cout << "Axis 2 component: " << vectors.col(index2).transpose() << std::endl;
 
   if (status) {
     // TODO: add logging
@@ -1207,12 +1212,10 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
     assert(false);
   }
 
-  std::cout << "Axis 1 base and eigenvalue: " << vectors.col(index1).transpose()
-            << ", " << values[index1] << std::endl;
-
-  *mainAxis = vectors.col(mainIndex) + vectors.col(assocIndexMain);
-  *axis1 = vectors.col(index1) + vectors.col(assocIndex1);
-  *axis2 = vectors.col(index2) + vectors.col(assocIndex2);
+  // the axes are proportional to a factor of sqrt(2)
+  *mainAxis = (vectors.col(mainIndex) + vectors.col(assocIndexMain)) / sqrt(2);
+  *axis1 = (vectors.col(index1) + vectors.col(assocIndex1)) / sqrt(2);
+  *axis2 = (vectors.col(index2) + vectors.col(assocIndex2)) / sqrt(2);
 
   return slope;
 }

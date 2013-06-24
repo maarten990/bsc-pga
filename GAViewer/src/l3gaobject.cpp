@@ -339,9 +339,6 @@ int l3gaObject::draw(glwindow *window) {
         drawVector(m_int.m_point[1], dir, 1.0);
         break;
       case MVI_REGULUS:
-        printf("%f, %f, %f\n", m_int.m_vector[3][0],
-               m_int.m_vector[3][1],
-               m_int.m_vector[3][2]);
         axis = (m_int.m_vector[3][0] * e3ga::e1) +
                (m_int.m_vector[3][1] * e3ga::e2) +
                (m_int.m_vector[3][2] * e3ga::e3);
