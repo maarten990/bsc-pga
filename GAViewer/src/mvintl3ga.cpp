@@ -579,8 +579,6 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           std::cout << std::endl;
 
           l3gaLineDirectionOffset(m_point[0], m_vector[3], mainAxisGA);
-          std::cout << m_vector[3][0] << " " << m_vector[3][1] <<
-            " " << m_vector[3][2] << std::endl;
           l3gaLineDirectionOffset(m_point[1], m_vector[1], axis1GA);
           l3gaLineDirectionOffset(m_point[2], m_vector[2], axis1GA);
 
@@ -1196,8 +1194,6 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
                              vectors, values);
 
   secondaryAxes(&index1, &index2, mainIndex, vectors, values);
-  std::cout << "Axis 1 component: " << vectors.col(index1).transpose() << std::endl;
-  std::cout << "Axis 2 component: " << vectors.col(index2).transpose() << std::endl;
 
   if (status) {
     // TODO: add logging
