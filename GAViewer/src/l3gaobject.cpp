@@ -144,7 +144,7 @@ l3gaObject::l3gaObject(const l3ga &mv, const std::string &name /*= std::string("
         case MVI_POINT:
           break;
         case MVI_IDEAL_POINT:
-          m_drawMode |= OD_STIPPLE;
+          //m_drawMode |= OD_STIPPLE;
           break;
         case MVI_PLANE:
           m_dmMenuIdx = DRAW_PLANE;
@@ -250,6 +250,7 @@ int l3gaObject::draw(glwindow *window) {
   double dir[3] = {1.0, 0.0, 0.0};
 
   if (m_int.blade()) {
+    e3ga axis;
     switch (m_int.type()) {
       case MVI_ZERO:
         // don't draw anything
@@ -307,6 +308,7 @@ int l3gaObject::draw(glwindow *window) {
         drawPoint(m_int.m_point[0], m_int.m_scalar[0], 0, this);
         break;
       case MVI_IDEAL_POINT:
+        printf("ideal point\n");
         drawIdealPoint(m_int.m_vector[0], m_int.m_scalar[0], DRAW_IDEAL_POINT, 0, this);
         break;
       case MVI_IDEAL_PLANE:
@@ -314,6 +316,7 @@ int l3gaObject::draw(glwindow *window) {
         drawTriVector(NULL, (m_drawMode & OD_MAGNITUDE) ? m_int.m_scalar[0] : ((m_int.m_scalar[0] < 0.0) ? -1.0 : 1.0), NULL, m_dmMenuIdx, (m_drawMode & OD_ORI) ? 0x01 : 0, this);
         break;
       case MVI_PLANE:
+        printf("Drawing plane!\n");
         drawPlane(m_int.m_point[0], m_int.m_vector[0], m_int.m_vector[1], m_int.m_vector[2], m_int.m_scalar[0], DRAW_PLANE, 0, this);
         break;
       case MVI_LINE_PENCIL_PAIR:
@@ -336,6 +339,14 @@ int l3gaObject::draw(glwindow *window) {
         drawVector(m_int.m_point[1], dir, 1.0);
         break;
       case MVI_REGULUS:
+        axis = (m_int.m_vector[3][0] * e3ga::e1) +
+               (m_int.m_vector[3][1] * e3ga::e2) +
+               (m_int.m_vector[3][2] * e3ga::e3);
+
+
+        drawRegulus(axis, m_int.m_scalar[0], m_int.m_point[0], m_int.m_vector[1],
+                    m_int.m_vector[2], m_int.m_scalar[1], m_int.m_scalar[2]);
+        break;
       case MVI_SPACE:
         // don't draw anything
       default:

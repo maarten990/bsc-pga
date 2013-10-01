@@ -18,12 +18,21 @@
 #include <math.h>
 #include <algorithm>
 #include <vector>
+#include <iostream>
+#include <map>
+#include <assert.h>
 
 #include "object.h"
 #include "mvint.h"
 #include "util.h"
 #include "state.h"
 #include "console/consolevariable.h"
+
+#include <eigen2/Eigen/Core>
+#include <eigen2/Eigen/Eigen>
+#include <eigen2/Eigen/src/QR/EigenSolver.h>
+
+USING_PART_OF_NAMESPACE_EIGEN
 
 #define p3gaToL3ga(x) (consoleVariable("", x).castToL3ga()->l3())
 #define l3gaToP3ga(x) (consoleVariable("", x).castToP3ga()->p())
@@ -39,6 +48,12 @@ p3ga moment(p3ga x);
 p3ga cross_product(p3ga x, p3ga y); 
 p3ga point_on_line(p3ga x, GAIM_FLOAT t);
 
+MatrixXd versorToMatrix(const l3ga &R);
+int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
+                      VectorXd *axis2);
+l3ga vectorToNullGA(const VectorXd &vec);
+VectorXd nullGAToVector(const l3ga &ga);
+void l3gaLineDirectionOffset(GAIM_FLOAT *offset, GAIM_FLOAT *direction, l3ga line);
 
 int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
   const GAIM_FLOAT epsilon = 1e-6; // rather arbitrary limit on fp-noise
@@ -389,7 +404,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           m_valid = 1;
         }
         else if (!((interpret[0].m_type & MVI_DUAL) || (interpret[1].m_type & MVI_DUAL) || (interpret[2].m_type & MVI_DUAL)) &&
-            intersection_count == 3) {
+                 intersection_count == 3 && (X*X).scalar() == 0) {
           // point of intersection is the meet of the two homogeneous lines!
           p3ga a1 = (consoleVariable("", factors[0]).castToP3ga())->p(),
                a2 = (consoleVariable("", factors[1]).castToP3ga())->p(),
@@ -429,20 +444,20 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           }
             
 
-          if (isIdeal == 3) {
+          if (isIdeal == 3 && (X * X).scalar() == 0) {
             m_type |= MVI_IDEAL_POINT;
-            printf("ideal point\n");
+            //printf("ideal point\n");
             /*
             scalar 0: weight
             scalar 1: orientation
             vector 0: direction
             */
-
             m_vector[0][0] = m_scalar[1] * intersection2[GRADE1][P3GA_E1];
             m_vector[0][1] = m_scalar[1] * intersection2[GRADE1][P3GA_E2];
             m_vector[0][2] = m_scalar[1] * intersection2[GRADE1][P3GA_E3];
             m_valid = 1;
           }
+
           else if (fabs((intersection1 - intersection2).norm_a()) < epsilon && 
               fabs((intersection2 - intersection3).norm_a()) < epsilon &&
               fabs((intersection3 - intersection1).norm_a()) < epsilon) {
@@ -537,10 +552,44 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           m_vector[2][1] = m_point[1][1] - m_point[0][1];
           m_vector[2][2] = m_point[1][2] - m_point[0][2];
         }
-        else if (intersection_count == 0) {
+        else if ( (X * X).scalar() != 0) {
           m_type |= MVI_REGULUS;
           printf("regulus\n");
-          m_valid = 0;
+
+          /**
+           * scalar0: slant
+           * point0 : axis location
+           * vector0: main axis direction
+           * vector1: axis1 direction
+           * vector2: axis2 direction
+           */
+          VectorXd axis(6), axis1(6), axis2(6);
+          int slope = regulusParameters(X, &axis, &axis1, &axis2);
+
+          l3ga mainAxisGA = vectorToNullGA(axis),
+            axis1GA = vectorToNullGA(axis1),
+            axis2GA = vectorToNullGA(axis2);
+          
+          std::cout << "Main axis: ";
+          mainAxisGA.print();
+          std::cout << "Axis 1: ";
+          axis1GA.print();
+          std::cout << "Axis 2: ";
+          axis2GA.print();
+          std::cout << std::endl;
+
+          double weight1 = sqrt(axis1GA[GRADE1][L3GA_E01] * axis1GA[GRADE1][L3GA_E01] + axis1GA[GRADE1][L3GA_E02] * axis1GA[GRADE1][L3GA_E02] + axis1GA[GRADE1][L3GA_E03] * axis1GA[GRADE1][L3GA_E03]);
+          double weight2 = sqrt(axis2GA[GRADE1][L3GA_E01] * axis2GA[GRADE1][L3GA_E01] + axis2GA[GRADE1][L3GA_E02] * axis2GA[GRADE1][L3GA_E02] + axis2GA[GRADE1][L3GA_E03] * axis2GA[GRADE1][L3GA_E03]);
+          std::cout << weight1 << ", " << weight2 << std::endl;
+
+          l3gaLineDirectionOffset(m_point[0], m_vector[3], mainAxisGA);
+          l3gaLineDirectionOffset(m_point[1], m_vector[1], axis1GA);
+          l3gaLineDirectionOffset(m_point[2], m_vector[2], axis1GA);
+
+          m_scalar[0] = (M_PI / 4.0) * slope;
+          m_scalar[1] = weight1;
+          m_scalar[2] = weight2;
+          m_valid = 1;
         }
         else {
           m_type |= MVI_UNKNOWN;
@@ -830,4 +879,362 @@ p3ga cross_product(p3ga x, p3ga y) {
 
 p3ga point_on_line(p3ga x, GAIM_FLOAT t) {
   return (cross_product(moment(x), direction(x)) + (t * direction(x)) + (direction(x) * direction(x) * p3ga::e0)) / (direction(x) * direction(x));
+}
+
+// turns an l3ga object to a 6D vector on the {e01, e02, e03, e23, e31, e12}
+// basis
+VectorXd nullGAToVector(const l3ga &ga)
+{
+  return (VectorXd(6) <<
+          ga[GRADE1][L3GA_E01],
+          ga[GRADE1][L3GA_E02],
+          ga[GRADE1][L3GA_E03],
+          ga[GRADE1][L3GA_E23],
+          ga[GRADE1][L3GA_E31],
+          ga[GRADE1][L3GA_E12]).finished();
+}
+
+// turns a 6D vector on the {e01, e02, e03, e23, e31, e12} basis to an l3ga
+// object
+l3ga vectorToNullGA(const VectorXd &vec)
+{
+  return (vec[0] * l3ga::e01) +
+         (vec[1] * l3ga::e02) +
+         (vec[2] * l3ga::e03) +
+         (vec[3] * l3ga::e23) +
+         (vec[4] * l3ga::e31) +
+         (vec[5] * l3ga::e12);
+}
+
+// Returns a copy of A where values very close to 0 are replaced with an actual
+// zero
+MatrixXd sanitize(const MatrixXd &A)
+{
+  MatrixXd As(A);
+  for (int i = 0; i < As.cols(); ++i) {
+    for (int j = 0; j < As.rows(); ++j) {
+      if ( (-0.000001 < As(j, i)) && (As(j, i) < 0.000001) ) {
+        As(j, i) = 0;
+      }
+    }
+  }
+
+  return As;
+}
+
+/* Transforms a vector on on the null basis by a given regulus according to the
+ * regulus operator: R[x] = inv(R) x R
+ */
+VectorXd transformVersor(const l3ga &R, VectorXd vec)
+{
+  l3ga ga = vectorToNullGA(vec);
+  return nullGAToVector(R.inverse() * ga * R);
+}
+
+void testTransformation(const MatrixXd &basis, const l3ga &R, const MatrixXd &A)
+{
+  
+  // check if the basis vectors transform properly
+  for (int i = 0; i < 6; ++i) {
+    VectorXd b = basis.col(i);
+    VectorXd bt = A * b;
+
+    l3ga bga = vectorToNullGA(b);
+    l3ga bgat = R.inverse() * bga * R;
+    VectorXd bgatv = nullGAToVector(bgat);
+
+    // filter out "almost 0" values
+    for (int i = 0; i < 6; ++i)
+      if ((bgatv[i] <  0.00001) &&
+          (bgatv[i] > -0.00001))
+        bgatv[i] = 0;
+        
+    if (bgatv != bt) {
+      std::cout << "WARNING: vector transformation incorrect" << std::endl;
+      std:: cout << bt.transpose() << std::endl;
+      std:: cout << bgatv.transpose() << std::endl << std::endl;
+    }
+  }
+
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+  // symmetry
+  // condition: A = M transp(A) M
+  if( sanitize(M * A.transpose() * M) != A ) {
+    std::cout << "WARNING: transformation not symmetric" << std::endl << std::endl;
+    std::cout << "Transformation: " << std::endl;
+    std::cout << A << std::endl << std::endl;
+  };
+
+  // orthogonality check (Dorst unreleased paper, section 3.7)
+  if( sanitize(M * A.transpose() * M * A) != MatrixXd::Identity(6, 6) ) {
+    std::cout << "WARNING: transformation not orthogonal" << std::endl;
+    std::cout << "M * A.T * M * A = " << std::endl
+              << sanitize(M * A.transpose() * M * A) << std::endl << std::endl;
+  }
+}
+
+/* Geometric Algebra For Computer Science, page 114 */
+MatrixXd versorToMatrix(const l3ga &R)
+{
+  MatrixXd basis(6, 6), transform(6, 6);
+  basis << MatrixXd::Identity(6, 6);
+
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+  for (int i = 0; i < 6; ++i) {
+    for (int j = 0; j < 6; ++j) {
+      // take the 0th element because this returns a vector
+      transform(j, i) = (basis.row(j) * transformVersor(R, basis.col(i)) )[0];
+    }
+  }
+
+  transform = sanitize(transform);
+  //testTransformation(basis, R, transform);
+  
+  return transform;
+}
+
+int findOddOneOut(int *slope, int *index,
+                  MatrixXd &eigenvectors, VectorXd &eigenvalues)
+{
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+  // there are three eigenvectors with corresponding eigenvalue 1
+  // either two of them square to 1, or two of them square to -1
+  // the odd one out corresponds to the main axis
+  std::vector<int> posSquared1, negSquared1,
+    posSquaredM1, negSquaredM1;
+
+  // find the squared values for each eigenvector
+  for (int i = 0; i < eigenvectors.cols(); ++i) {
+    if ( (0.999999 < eigenvalues[i] &&
+          eigenvalues[i] < 1.000001) ) {
+      if ((eigenvectors.col(i).transpose() * M * eigenvectors.col(i))[0] > 0)
+        posSquared1.push_back(i);
+      else
+        negSquared1.push_back(i);
+    }
+
+    else {
+      if ((eigenvectors.col(i).transpose() * M * eigenvectors.col(i))[0] > 0)
+        posSquaredM1.push_back(i);
+      else
+        negSquaredM1.push_back(i);
+    }
+  }
+
+  if (posSquared1.size() == 1) {
+    *index = posSquared1[0];
+    *slope = 1;
+  }
+
+  else if (negSquared1.size() == 1) {
+    *index =  negSquared1[0];
+    *slope = -1;
+  }
+
+  else if (posSquaredM1.size() == 1) {
+    *index =  posSquaredM1[0];
+    *slope = -1;
+  }
+  else if (negSquaredM1.size() == 1) {
+    *index =  negSquaredM1[0];
+    *slope = 1;
+  }
+
+  else {
+    return 1;
+  }
+
+  return 0;
+}
+
+bool differentSign(double x, double y)
+{
+  if ( (x < 0 && y >= 0) || (y < 0 && x >= 0) ) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+int findAssociate(int index, MatrixXd &eigenvectors, VectorXd &eigenvalues)
+{
+  // construct the metric matrix for the null basis
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+  
+  std::map<int, int> componentCounts;
+
+  VectorXd axis = eigenvectors.col(index);
+  VectorXd squared, added;
+ 
+  VectorXd candidate;
+
+  for (int i = 0; i < eigenvectors.cols(); ++i) {
+    // only compare to the eigenvectors with flipped sign
+    if (differentSign(eigenvalues[i], eigenvalues[index])) {
+      candidate = eigenvectors.col(i);
+
+      added = candidate + axis;
+      squared = added.transpose() * M * added;
+
+      // if the added components form a line, check how many grade 1 components it has
+      if ((squared[0] < 0.0000001) && (squared[0] > -0.0000001)) {
+        componentCounts[i] = 0;
+        if (added[0] != 0) componentCounts[i] += 1;
+        if (added[1] != 0) componentCounts[i] += 1;
+        if (added[2] != 0) componentCounts[i] += 1;
+        if (added[3] != 0) componentCounts[i] += 1;
+        if (added[4] != 0) componentCounts[i] += 1;
+        if (added[5] != 0) componentCounts[i] += 1;
+      }
+    }
+  }
+  
+  if (componentCounts.empty())
+    return -1;
+  else {
+    int lowestInd, lowestComp = 999;
+    for (std::map<int, int>::iterator it = componentCounts.begin();
+         it != componentCounts.end(); ++it) {
+      if (it->second < lowestComp) {
+        lowestInd = it->first;
+        lowestComp = it->second;
+      }
+    }
+
+    return lowestInd;
+  }
+}
+
+/**
+ * Find the secondary axes.
+ * index1 and index2: pointers to which the axis indices will be written
+ * mainIndex: index of the main axis
+ */
+
+void secondaryAxes(int *index1, int *index2, int mainIndex,
+                  MatrixXd &eigenvectors, VectorXd &eigenvalues)
+{
+  int done = 0;
+
+  for (int i = 0; i < eigenvectors.cols(); ++i) {
+    if (eigenvalues[i] == eigenvalues[mainIndex] && i != mainIndex) {
+      switch (done) {
+      case 0:
+        *index1 = i;
+        done += 1;
+        break;
+      case 1:
+        *index2 = i;
+        done += 1;
+        break;
+      default:
+        return;
+      }
+    }
+  }
+}
+
+int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
+                      VectorXd *axis2)
+{
+  MatrixXd vectors;
+  VectorXd values;
+
+  MatrixXd transform = versorToMatrix(X);
+
+  // obtain eigenvalues and vectors
+  Eigen::EigenSolver<MatrixXd> eigen(transform);
+  values  = eigen.eigenvalues().real();
+  vectors = eigen.eigenvectors().real();
+
+  // normalize eigenvectors
+  for (int i = 0; i < vectors.cols(); ++i) {
+    l3ga temp = vectorToNullGA(vectors.col(i));
+    vectors.col(i) = nullGAToVector(temp / sqrt( fabs(*(temp * temp)[GRADE0]) ) );
+  }
+
+  // debug print
+  /*
+  std::cout << "Eigenvectors (value, square, vector): " << std::endl;
+  for (int i = 0; i < vectors.cols(); ++i) {
+    MatrixXd M(6, 6);
+    M <<
+      MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+      MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+    std::cout << values[i] << ", " << vectors.col(i).transpose() * M * vectors.col(i) << ", ";
+    vectorToNullGA(vectors.col(i)).print();
+  }
+  */
+
+  
+  // multiply each vector by -1 if its eigenvalue is -1
+  // appears to work well for most cases
+  for (int i = 0; i < vectors.cols(); ++i) {
+    if (values[i] == -1) {
+      vectors.col(i) *= -1;
+    }
+  }
+
+  // find the column indices of the 3 axes
+  int slope, mainIndex, index1, index2;
+  int status = findOddOneOut(&slope, &mainIndex,
+                             vectors, values);
+
+  secondaryAxes(&index1, &index2, mainIndex, vectors, values);
+
+  if (status) {
+    // TODO: add logging
+    std::cout << "Error: Could not find mainAxis." << std::endl;
+  }
+
+  int assocIndexMain = findAssociate(mainIndex, vectors, values);
+  int assocIndex1    = findAssociate(index1, vectors, values);
+  int assocIndex2    = findAssociate(index2, vectors, values);
+  if ((assocIndexMain == -1) || (assocIndex1 == -1) || (assocIndex2 == -1)) {
+    std::cout << "Error: Could not find associate." << std::endl;
+    assert(false);
+  }
+
+  // the axes are proportional to a factor of sqrt(2)
+  *mainAxis = (vectors.col(mainIndex) + vectors.col(assocIndexMain)) / sqrt(2);
+  *axis1 = (vectors.col(index1) + vectors.col(assocIndex1)) / sqrt(2);
+  *axis2 = (vectors.col(index2) + vectors.col(assocIndex2)) / sqrt(2);
+
+  return slope;
+}
+
+// converts an l3ga line to it's offset and direction as arrays of 3 elements
+void l3gaLineDirectionOffset(GAIM_FLOAT *offset, GAIM_FLOAT *direction, l3ga line)
+{
+  // weight
+  double weight = sqrt(line[GRADE1][L3GA_E01] * line[GRADE1][L3GA_E01] + line[GRADE1][L3GA_E02] * line[GRADE1][L3GA_E02] + line[GRADE1][L3GA_E03] * line[GRADE1][L3GA_E03]);
+
+  // direction
+  direction[0] = line[GRADE1][L3GA_E01] / weight;
+  direction[1] = line[GRADE1][L3GA_E02] / weight;
+  direction[2] = line[GRADE1][L3GA_E03] / weight;
+
+  // offset
+  offset[0] = ((line[GRADE1][L3GA_E12] * direction[1]) - (line[GRADE1][L3GA_E31] * direction[2])) / weight;
+  offset[1] = ((line[GRADE1][L3GA_E23] * direction[2]) - (line[GRADE1][L3GA_E12] * direction[0])) / weight;
+  offset[2] = ((line[GRADE1][L3GA_E31] * direction[0]) - (line[GRADE1][L3GA_E23] * direction[1])) / weight;
 }

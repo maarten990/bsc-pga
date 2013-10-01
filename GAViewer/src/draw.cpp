@@ -440,6 +440,58 @@ int drawTriVector(const GAIM_FLOAT base[3], GAIM_FLOAT scale, GAIM_FLOAT vector[
 	return 0;
 }
 
+void glApplyRotor(e3ga rotor)
+{
+  float matrix[16];
+  e3gaRotorToOpenGLMatrix(rotor, matrix);
+  glMultMatrixf(matrix);
+}
+
+int drawRegulus(e3ga &axis, double slant, double point[3],
+                double axis1[3], double axis2[3],
+		double scaling1, double scaling2) {
+  TubeDraw &T = gui_state->m_tubeDraw;
+  e3ga plane = axis.dual();
+  e3ga rotor;
+
+  // OpenGL boilerplate
+  glMatrixMode(GL_MODELVIEW);
+  glDisable(GL_LIGHTING);
+  glPushMatrix();
+
+  // green used for 3-blades
+  glColor3d(0, 1, 0);
+
+  // translate to the offset
+  if (point) glTranslated(point[0], point[1], point[2]);
+
+  // rotate e3 to the axis/plane normal
+  e3gaRve3(rotor, axis);
+  glApplyRotor(rotor);
+
+  // draw a selection of the lines in the regulus
+  for (double i = 0; i < 2 * M_PI; i += M_PI / 8) {
+    glPushMatrix();
+    glScalef(scaling1, scaling2, 1);
+
+    // rotate by i radians around the axis
+    rotor = cos(i / 2) - plane * sin(i / 2);
+    glApplyRotor(rotor);
+
+    // rotate by the slant angle in the e2 ^ e3 plane
+    rotor = cos(slant / 2) - (e3ga::e2 ^ e3ga::e3) * sin(slant / 2);
+    glApplyRotor(rotor);
+
+    T.begin(GL_LINES);
+    T.vertex3d(1, 0, -30);
+    T.vertex3d(1, 0, 30);
+    T.end();
+    glPopMatrix();
+  }
+
+  glPopMatrix();
+  return 0;
+}
 
 int drawLine(const GAIM_FLOAT point[3], const GAIM_FLOAT normal[3], GAIM_FLOAT magnitude, int method /*= DRAW_LINE_HOOKS */, int flags /*= 0*/, object *o /*= NULL*/) {
 	TubeDraw &T = gui_state->m_tubeDraw;
