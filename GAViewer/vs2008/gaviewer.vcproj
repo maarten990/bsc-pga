@@ -119,7 +119,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="F:\Users\Maarten\Desktop\GAViewer\zlib\include;F:\Users\Maarten\Desktop\GAViewer\antlr\include;F:\Users\Maarten\Desktop\GAViewer\libpng\include;&quot;F:\Users\Maarten\Desktop\GAViewer\fltk-1.3.2\&quot;"
+				AdditionalIncludeDirectories="&quot;F:\Users\Maarten\Desktop\GA Libraries\antlr-2.7.7\lib\cpp&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\lpng165&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\zlib-1.2.8&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\fltk-1.3.2&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS; WIN32_NO_CONSOLE"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -138,9 +138,10 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="ws2_32.lib comctl32.lib opengl32.lib glu32.lib antlrmt.lib fltk.lib fltkgl.lib zlib.lib libpng.lib"
+				AdditionalDependencies="ws2_32.lib comctl32.lib opengl32.lib glu32.lib antlr.lib fltk.lib fltkgl.lib zlib.lib libpng.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="F:\Users\Maarten\Desktop\GAViewer\zlib\lib;F:\Users\Maarten\Desktop\GAViewer\antlr\lib;F:\Users\Maarten\Desktop\GAViewer\libpng\lib;&quot;F:\Users\Maarten\Desktop\GAViewer\fltk-1.3.2\lib&quot;"
+				AdditionalLibraryDirectories="&quot;F:\Users\Maarten\Desktop\GA Libraries\lpng165\projects\visualc71\Win32_LIB_Release&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\zlib-1.2.8&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\antlr-2.7.7\vs2008\Release&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\fltk-1.3.2\lib&quot;"
+				IgnoreAllDefaultLibraries="false"
 				GenerateDebugInformation="true"
 				SubSystem="2"
 				OptimizeReferences="2"
@@ -877,6 +878,10 @@
 				</File>
 				<File
 					RelativePath="..\src\l3ga\l3ga.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\l3ga\l3ga_optc.cpp"
 					>
 				</File>
 				<File

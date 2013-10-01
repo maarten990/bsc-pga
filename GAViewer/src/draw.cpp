@@ -929,7 +929,8 @@ int drawLinePair(const GAIM_FLOAT point1[3], const GAIM_FLOAT direction1[3], con
 
 int drawDualLinePair(const GAIM_FLOAT point1[3], const GAIM_FLOAT direction1[3], const GAIM_FLOAT point2[3], const GAIM_FLOAT direction2[3], const GAIM_FLOAT weight, int method /*= DRAW_DUAL_LINE_PAIR*/, int flags /*= 0*/, object *o /*= NULL*/) {
   TubeDraw &T = gui_state->m_tubeDraw;
-  int i, j, resolution = 15;
+  int i, j;
+  const int resolution = 15;
   GAIM_FLOAT focalpoints[2][1 + 2 * resolution][3],
              tmp[3],
              z,
