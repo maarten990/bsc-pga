@@ -1171,8 +1171,22 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
     vectors.col(i) = nullGAToVector(temp / sqrt( fabs(*(temp * temp)[GRADE0]) ) );
   }
 
+  // multiply each vector by -1 if its real component is negative
+  // appears to work well for most cases
+  for (int i = 0; i < vectors.cols(); ++i) {
+    if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E01] < -0.000001) {
+      printf("Multiplying because E01 = %f\n", vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E01]);
+      vectors.col(i) *= -1;
+    } else if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E02] < -0.000001) {
+      printf("Multiplying because E02 = %f\n", vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E02]);
+      vectors.col(i) *= -1;
+    } else if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E03] < -0.000001) {
+      printf("Multiplying because E03 = %f\n", vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E03]);
+      vectors.col(i) *= -1;
+    }
+  }
+  //
   // debug print
-  /*
   std::cout << "Eigenvectors (value, square, vector): " << std::endl;
   for (int i = 0; i < vectors.cols(); ++i) {
     MatrixXd M(6, 6);
@@ -1182,16 +1196,6 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
 
     std::cout << values[i] << ", " << vectors.col(i).transpose() * M * vectors.col(i) << ", ";
     vectorToNullGA(vectors.col(i)).print();
-  }
-  */
-
-  
-  // multiply each vector by -1 if its eigenvalue is -1
-  // appears to work well for most cases
-  for (int i = 0; i < vectors.cols(); ++i) {
-    if (values[i] == -1) {
-      vectors.col(i) *= -1;
-    }
   }
 
   // find the column indices of the 3 axes
