@@ -1165,10 +1165,12 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   values  = eigen.eigenvalues().real();
   vectors = eigen.eigenvectors().real();
 
-  // normalize eigenvectors
+  // normalize eigenvectors, unless they square to 0
   for (int i = 0; i < vectors.cols(); ++i) {
     l3ga temp = vectorToNullGA(vectors.col(i));
-    vectors.col(i) = nullGAToVector(temp / sqrt( fabs(*(temp * temp)[GRADE0]) ) );
+    if (*(temp * temp)[GRADE0] != 0) {
+      vectors.col(i) = nullGAToVector(temp / sqrt( fabs(*(temp * temp)[GRADE0]) ) );
+    }
   }
 
   // multiply each vector by -1 if its real component is negative
