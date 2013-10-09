@@ -1123,19 +1123,23 @@ int findAssociate(int index, MatrixXd &eigenvectors, VectorXd &eigenvalues)
   }
 }
 
+bool closeEnough(double x, double y)
+{
+  return abs(x - y) < 0.0001;
+}
+
 /**
  * Find the secondary axes.
  * index1 and index2: pointers to which the axis indices will be written
  * mainIndex: index of the main axis
  */
-
 void secondaryAxes(int *index1, int *index2, int mainIndex,
                   MatrixXd &eigenvectors, VectorXd &eigenvalues)
 {
   int done = 0;
 
   for (int i = 0; i < eigenvectors.cols(); ++i) {
-    if (eigenvalues[i] == eigenvalues[mainIndex] && i != mainIndex) {
+    if (closeEnough(eigenvalues[i], eigenvalues[mainIndex]) && (i != mainIndex)) {
       switch (done) {
       case 0:
         *index1 = i;
@@ -1189,6 +1193,7 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   }
   //
   // debug print
+  /*
   std::cout << "Eigenvectors (value, square, vector): " << std::endl;
   for (int i = 0; i < vectors.cols(); ++i) {
     MatrixXd M(6, 6);
@@ -1199,18 +1204,19 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
     std::cout << values[i] << ", " << vectors.col(i).transpose() * M * vectors.col(i) << ", ";
     vectorToNullGA(vectors.col(i)).print();
   }
+  */
 
   // find the column indices of the 3 axes
   int slope, mainIndex, index1, index2;
   int status = findOddOneOut(&slope, &mainIndex,
                              vectors, values);
 
-  secondaryAxes(&index1, &index2, mainIndex, vectors, values);
-
   if (status) {
     // TODO: add logging
     std::cout << "Error: Could not find mainAxis." << std::endl;
   }
+
+  secondaryAxes(&index1, &index2, mainIndex, vectors, values);
 
   int assocIndexMain = findAssociate(mainIndex, vectors, values);
   int assocIndex1    = findAssociate(index1, vectors, values);
