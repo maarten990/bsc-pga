@@ -570,6 +570,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
             axis1GA = vectorToNullGA(axis1),
             axis2GA = vectorToNullGA(axis2);
           
+          /*
           std::cout << "Main axis: ";
           mainAxisGA.print();
           std::cout << "Axis 1: ";
@@ -577,6 +578,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           std::cout << "Axis 2: ";
           axis2GA.print();
           std::cout << std::endl;
+          */
 
           double weight1 = sqrt(axis1GA[GRADE1][L3GA_E01] * axis1GA[GRADE1][L3GA_E01] + axis1GA[GRADE1][L3GA_E02] * axis1GA[GRADE1][L3GA_E02] + axis1GA[GRADE1][L3GA_E03] * axis1GA[GRADE1][L3GA_E03]);
           double weight2 = sqrt(axis2GA[GRADE1][L3GA_E01] * axis2GA[GRADE1][L3GA_E01] + axis2GA[GRADE1][L3GA_E02] * axis2GA[GRADE1][L3GA_E02] + axis2GA[GRADE1][L3GA_E03] * axis2GA[GRADE1][L3GA_E03]);
@@ -1181,13 +1183,10 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   // appears to work well for most cases
   for (int i = 0; i < vectors.cols(); ++i) {
     if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E01] < -0.000001) {
-      printf("Multiplying because E01 = %f\n", vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E01]);
       vectors.col(i) *= -1;
     } else if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E02] < -0.000001) {
-      printf("Multiplying because E02 = %f\n", vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E02]);
       vectors.col(i) *= -1;
     } else if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E03] < -0.000001) {
-      printf("Multiplying because E03 = %f\n", vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E03]);
       vectors.col(i) *= -1;
     }
   }
