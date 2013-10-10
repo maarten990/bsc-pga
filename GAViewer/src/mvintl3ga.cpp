@@ -570,6 +570,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
             axis1GA = vectorToNullGA(axis1),
             axis2GA = vectorToNullGA(axis2);
           
+          /*
           std::cout << "Main axis: ";
           mainAxisGA.print();
           std::cout << "Axis 1: ";
@@ -577,6 +578,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           std::cout << "Axis 2: ";
           axis2GA.print();
           std::cout << std::endl;
+          */
 
           double weight1 = sqrt(axis1GA[GRADE1][L3GA_E01] * axis1GA[GRADE1][L3GA_E01] + axis1GA[GRADE1][L3GA_E02] * axis1GA[GRADE1][L3GA_E02] + axis1GA[GRADE1][L3GA_E03] * axis1GA[GRADE1][L3GA_E03]);
           double weight2 = sqrt(axis2GA[GRADE1][L3GA_E01] * axis2GA[GRADE1][L3GA_E01] + axis2GA[GRADE1][L3GA_E02] * axis2GA[GRADE1][L3GA_E02] + axis2GA[GRADE1][L3GA_E03] * axis2GA[GRADE1][L3GA_E03]);
@@ -1123,19 +1125,23 @@ int findAssociate(int index, MatrixXd &eigenvectors, VectorXd &eigenvalues)
   }
 }
 
+bool closeEnough(double x, double y)
+{
+  return abs(x - y) < 0.0001;
+}
+
 /**
  * Find the secondary axes.
  * index1 and index2: pointers to which the axis indices will be written
  * mainIndex: index of the main axis
  */
-
 void secondaryAxes(int *index1, int *index2, int mainIndex,
                   MatrixXd &eigenvectors, VectorXd &eigenvalues)
 {
   int done = 0;
 
   for (int i = 0; i < eigenvectors.cols(); ++i) {
-    if (eigenvalues[i] == eigenvalues[mainIndex] && i != mainIndex) {
+    if (closeEnough(eigenvalues[i], eigenvalues[mainIndex]) && (i != mainIndex)) {
       switch (done) {
       case 0:
         *index1 = i;
@@ -1165,12 +1171,26 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   values  = eigen.eigenvalues().real();
   vectors = eigen.eigenvectors().real();
 
-  // normalize eigenvectors
+  // normalize eigenvectors, unless they square to 0
   for (int i = 0; i < vectors.cols(); ++i) {
     l3ga temp = vectorToNullGA(vectors.col(i));
-    vectors.col(i) = nullGAToVector(temp / sqrt( fabs(*(temp * temp)[GRADE0]) ) );
+    if (*(temp * temp)[GRADE0] != 0) {
+      vectors.col(i) = nullGAToVector(temp / sqrt( fabs(*(temp * temp)[GRADE0]) ) );
+    }
   }
 
+  // multiply each vector by -1 if its real component is negative
+  // appears to work well for most cases
+  for (int i = 0; i < vectors.cols(); ++i) {
+    if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E01] < -0.000001) {
+      vectors.col(i) *= -1;
+    } else if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E02] < -0.000001) {
+      vectors.col(i) *= -1;
+    } else if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E03] < -0.000001) {
+      vectors.col(i) *= -1;
+    }
+  }
+  //
   // debug print
   /*
   std::cout << "Eigenvectors (value, square, vector): " << std::endl;
@@ -1185,26 +1205,17 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   }
   */
 
-  
-  // multiply each vector by -1 if its eigenvalue is -1
-  // appears to work well for most cases
-  for (int i = 0; i < vectors.cols(); ++i) {
-    if (values[i] == -1) {
-      vectors.col(i) *= -1;
-    }
-  }
-
   // find the column indices of the 3 axes
   int slope, mainIndex, index1, index2;
   int status = findOddOneOut(&slope, &mainIndex,
                              vectors, values);
 
-  secondaryAxes(&index1, &index2, mainIndex, vectors, values);
-
   if (status) {
     // TODO: add logging
     std::cout << "Error: Could not find mainAxis." << std::endl;
   }
+
+  secondaryAxes(&index1, &index2, mainIndex, vectors, values);
 
   int assocIndexMain = findAssociate(mainIndex, vectors, values);
   int assocIndex1    = findAssociate(index1, vectors, values);
