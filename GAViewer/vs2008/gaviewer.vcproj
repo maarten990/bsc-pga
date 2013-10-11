@@ -119,8 +119,8 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;F:\Users\Maarten\Desktop\GA Libraries\antlr-2.7.7\lib\cpp&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\lpng165&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\zlib-1.2.8&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\fltk-1.3.2&quot;"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS; WIN32_NO_CONSOLE"
+				AdditionalIncludeDirectories="&quot;F:\Users\Maarten\Desktop\GA Libraries&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\antlr-2.7.7\lib\cpp&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\lpng165&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\zlib-1.2.8&quot;;&quot;F:\Users\Maarten\Desktop\GA Libraries\fltk-1.3.2&quot;"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;WIN32_NO_CONSOLE;NOMINMAX"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
