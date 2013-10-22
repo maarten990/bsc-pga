@@ -559,7 +559,7 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           /**
            * scalar0: slant
            * point0 : axis location
-           * vector0: main axis direction
+           * vector3: main axis direction
            * vector1: axis1 direction
            * vector2: axis2 direction
            */
@@ -570,7 +570,6 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
             axis1GA = vectorToNullGA(axis1),
             axis2GA = vectorToNullGA(axis2);
           
-          /*
           std::cout << "Main axis: ";
           mainAxisGA.print();
           std::cout << "Axis 1: ";
@@ -578,7 +577,6 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           std::cout << "Axis 2: ";
           axis2GA.print();
           std::cout << std::endl;
-          */
 
           double weight1 = sqrt(axis1GA[GRADE1][L3GA_E01] * axis1GA[GRADE1][L3GA_E01] + axis1GA[GRADE1][L3GA_E02] * axis1GA[GRADE1][L3GA_E02] + axis1GA[GRADE1][L3GA_E03] * axis1GA[GRADE1][L3GA_E03]);
           double weight2 = sqrt(axis2GA[GRADE1][L3GA_E01] * axis2GA[GRADE1][L3GA_E01] + axis2GA[GRADE1][L3GA_E02] * axis2GA[GRADE1][L3GA_E02] + axis2GA[GRADE1][L3GA_E03] * axis2GA[GRADE1][L3GA_E03]);

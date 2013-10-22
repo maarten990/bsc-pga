@@ -555,6 +555,15 @@ int l3gaObject::description(char *buf, int bufLen, int sl /* = 0 */) {
           (m_int.dual()) ? "dual " : "",
           m_int.m_scalar[0]); 
       break;
+    case MVI_REGULUS:
+      sprintf(buf, "%s: l3ga regulus\nMain axis: %f, %f, %f\n"
+              "Secondary axis 1: %f, %f, %f\n"
+              "Secondary axis 2: %f, %f, %f",
+              m_name.c_str(),
+              m_int.m_vector[0][0], m_int.m_vector[0][1], m_int.m_vector[0][2],
+              m_int.m_vector[1][0], m_int.m_vector[1][1], m_int.m_vector[1][2],
+              m_int.m_vector[2][0], m_int.m_vector[2][1], m_int.m_vector[2][2]);
+      break;
     default:
       if (sl) sprintf(buf, "%s: unknown l3ga blade.", m_name.c_str());
       else sprintf(buf, "Unknown l3ga blade.\nCoordinates: %s", m_mv.string());
