@@ -1156,6 +1156,20 @@ void secondaryAxes(int *index1, int *index2, int mainIndex,
   }
 }
 
+void debugprint(const MatrixXd &vectors, const VectorXd &values)
+{
+  MatrixXd M(6, 6);
+  M <<
+    MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
+    MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
+
+  std::cout << "Eigenvectors ([index], value, square, vector): " << std::endl;
+  for (int i = 0; i < vectors.cols(); ++i) {
+    std::cout << "[" << i << "]\t" << values[i] << ",\t" << vectors.col(i).transpose() * M * vectors.col(i) << ",\t";
+    vectorToNullGA(vectors.col(i)).print();
+  }
+}
+
 int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
                       VectorXd *axis2)
 {
@@ -1163,11 +1177,14 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   VectorXd values;
 
   MatrixXd transform = versorToMatrix(X);
+  std::cout << "Transformation matrix: " << std::endl << transform << std::endl;
 
   // obtain eigenvalues and vectors
   Eigen::EigenSolver<MatrixXd> eigen(transform);
   values  = eigen.eigenvalues().real();
   vectors = eigen.eigenvectors().real();
+
+  debugprint(vectors, values);
 
   // normalize eigenvectors, unless they square to 0
   for (int i = 0; i < vectors.cols(); ++i) {
@@ -1177,31 +1194,27 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
     }
   }
 
+  std::cout << std::endl << "After normalization: " << std::endl;
+  debugprint(vectors, values);
+
   // multiply each vector by -1 if its real component is negative
   // appears to work well for most cases
   for (int i = 0; i < vectors.cols(); ++i) {
-    if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E01] < -0.000001) {
+    GAIM_FLOAT e01 = vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E01];
+    GAIM_FLOAT e02 = vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E02];
+    GAIM_FLOAT e03 = vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E03];
+
+    if (e01 < -0.000001) {
       vectors.col(i) *= -1;
-    } else if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E02] < -0.000001) {
+    } else if (e01 < 0.000001 && e02 < -0.000001) {
       vectors.col(i) *= -1;
-    } else if (vectorToNullGA(vectors.col(i))[GRADE1][L3GA_E03] < -0.000001) {
+    } else if (e02 < 0.000001 && e03 < -0.000001) {
       vectors.col(i) *= -1;
     }
   }
-  //
-  // debug print
-  /*
-  std::cout << "Eigenvectors (value, square, vector): " << std::endl;
-  for (int i = 0; i < vectors.cols(); ++i) {
-    MatrixXd M(6, 6);
-    M <<
-      MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
-      MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
 
-    std::cout << values[i] << ", " << vectors.col(i).transpose() * M * vectors.col(i) << ", ";
-    vectorToNullGA(vectors.col(i)).print();
-  }
-  */
+  std::cout << std::endl << "After multiplication: " << std::endl;
+  debugprint(vectors, values);
 
   // find the column indices of the 3 axes
   int slope, mainIndex, index1, index2;
@@ -1222,6 +1235,10 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
     std::cout << "Error: Could not find associate." << std::endl;
     assert(false);
   }
+
+  printf("\nMain axis + associate:\t\t[%d] + [%d]\n", mainIndex, assocIndexMain);
+  printf("Secondary axis 1 + associate:\t[%d] + [%d]\n", index1, assocIndex1);
+  printf("Secondary axis 2 + associate:\t[%d] + [%d]\n", index2, assocIndex2);
 
   // the axes are proportional to a factor of sqrt(2)
   *mainAxis = (vectors.col(mainIndex) + vectors.col(assocIndexMain)) / sqrt(2);
