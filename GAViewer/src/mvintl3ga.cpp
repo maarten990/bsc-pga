@@ -1241,9 +1241,9 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   printf("Secondary axis 2 + associate:\t[%d] + [%d]\n", index2, assocIndex2);
 
   // the axes are proportional to a factor of sqrt(2)
-  *mainAxis = (vectors.col(mainIndex) + vectors.col(assocIndexMain)) / sqrt(2);
-  *axis1 = (vectors.col(index1) + vectors.col(assocIndex1)) / sqrt(2);
-  *axis2 = (vectors.col(index2) + vectors.col(assocIndex2)) / sqrt(2);
+  *mainAxis = (vectors.col(mainIndex) + vectors.col(assocIndexMain)) / sqrt(2.0);
+  *axis1 = (vectors.col(index1) + vectors.col(assocIndex1)) / sqrt(2.0);
+  *axis2 = (vectors.col(index2) + vectors.col(assocIndex2)) / sqrt(2.0);
 
   return slope;
 }
