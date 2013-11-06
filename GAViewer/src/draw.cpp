@@ -470,6 +470,7 @@ int drawRegulus(e3ga &axis, double slant, double point[3],
   glApplyRotor(rotor);
 
   // sanity check for orthogonal axes
+  /*
   double dotproduct = (axis1[0] * axis2[0] +
 		       axis1[1] * axis2[1] +
 		       axis1[2] * axis2[2]);
@@ -478,6 +479,7 @@ int drawRegulus(e3ga &axis, double slant, double point[3],
     printf("Axes:\t[%f %f %f]\n", axis1[0], axis1[1], axis1[2]);
     printf("\t[%f %f %f]\n", axis2[0], axis2[1], axis2[2]);
   }
+  */
 
   // draw a selection of the lines in the regulus
   for (double i = 0; i < 2 * M_PI; i += M_PI / 8) {

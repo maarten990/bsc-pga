@@ -1163,7 +1163,7 @@ void debugprint(const MatrixXd &vectors, const VectorXd &values)
     MatrixXd::Zero(3, 3),     MatrixXd::Identity(3, 3),
     MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3);
 
-  std::cout << "Eigenvectors ([index], value, square, vector): " << std::endl;
+  std::cout << "Eigenvectors ([index], eigenvalue, square, vector): " << std::endl;
   for (int i = 0; i < vectors.cols(); ++i) {
     std::cout << "[" << i << "]\t" << values[i] << ",\t" << vectors.col(i).transpose() * M * vectors.col(i) << ",\t";
     vectorToNullGA(vectors.col(i)).print();
@@ -1177,7 +1177,7 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   VectorXd values;
 
   MatrixXd transform = versorToMatrix(X);
-  std::cout << "Transformation matrix: " << std::endl << transform << std::endl;
+  std::cout << "Transformation matrix: " << std::endl << transform << std::endl << std::endl;
 
   // obtain eigenvalues and vectors
   Eigen::EigenSolver<MatrixXd> eigen(transform);
@@ -1208,12 +1208,12 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
       vectors.col(i) *= -1;
     } else if (e01 < 0.000001 && e02 < -0.000001) {
       vectors.col(i) *= -1;
-    } else if (e02 < 0.000001 && e03 < -0.000001) {
+    } else if (e01 < 0.000001 && e02 < 0.000001 && e03 < -0.000001) {
       vectors.col(i) *= -1;
     }
   }
 
-  std::cout << std::endl << "After multiplication: " << std::endl;
+  std::cout << std::endl << "After multiplication by -1: " << std::endl;
   debugprint(vectors, values);
 
   // find the column indices of the 3 axes
