@@ -392,6 +392,10 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
         intersection_count = (fabs(lcont(factors[0], factors[1]).scalar()) < epsilon)
           + (fabs(lcont(factors[1], factors[2]).scalar()) < epsilon)
           + (fabs(lcont(factors[2], factors[0]).scalar()) < epsilon);
+        printf("Factors:\n");
+        factors[0].print();
+        factors[1].print();
+        factors[2].print();
 
         if (only_coordinates_set(X, epsilon, GRADE3, L3GA_E23_E31_E12)) {
           m_type |= MVI_IDEAL_PLANE;

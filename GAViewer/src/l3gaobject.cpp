@@ -350,13 +350,13 @@ int l3gaObject::draw(glwindow *window) {
       case MVI_SPACE:
         // don't draw anything
       default:
-        cprintf("Can not (yet) draw the blade object #%d\n", m_int.type());
+        //cprintf("Can not (yet) draw the blade object #%d\n", m_int.type());
         break;
     }
   }
   else {
     if (m_int.type() != MVI_UNKNOWN)
-      cprintf("Can not (yet) draw the object #%d\n", m_int.type());
+      //cprintf("Can not (yet) draw the object #%d\n", m_int.type());
     return 0;
   }
 
