@@ -504,7 +504,8 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
             m_valid = 1;
           }
         }
-        else if (intersection_count == 2) {
+		else if (intersection_count == 2 &&
+			     (X * X).scalar() < epsilon && (X * X).scalar() > -epsilon) {
           m_type |= MVI_LINE_PENCIL_PAIR;
           printf("line pencil pair\n");
           /*
