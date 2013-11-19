@@ -1160,6 +1160,34 @@ void secondaryAxes(int *index1, int *index2, int mainIndex,
   }
 }
 
+void printvector(const l3ga &X)
+{
+  if (X.grade() != 1) {
+    return;
+  }
+
+  int components[6] = {L3GA_E01, L3GA_E02, L3GA_E03, L3GA_E23, L3GA_E31, L3GA_E12};
+  std::vector<std::string> names;
+  names.push_back("e01");
+  names.push_back("e02");
+  names.push_back("e03");
+  names.push_back("e23");
+  names.push_back("e31");
+  names.push_back("e12");
+  bool first = true;
+
+  GAIM_FLOAT c;
+  for (int i = 0; i < 6; ++i) {
+    c = X[GRADE1][ components[i] ];
+
+    if (c) {
+      printf("%.3f*%s", c, names[i].c_str());
+      if (first) printf(" + ");
+      first = false;
+    }
+  }
+}
+
 void debugprint(const MatrixXd &vectors, const VectorXd &values)
 {
   MatrixXd M(6, 6);
@@ -1170,7 +1198,8 @@ void debugprint(const MatrixXd &vectors, const VectorXd &values)
   std::cout << "Eigenvectors ([index], eigenvalue, square, vector): " << std::endl;
   for (int i = 0; i < vectors.cols(); ++i) {
     std::cout << "[" << i << "]\t" << values[i] << ",\t" << vectors.col(i).transpose() * M * vectors.col(i) << ",\t";
-    vectorToNullGA(vectors.col(i)).print();
+    printvector( vectorToNullGA(vectors.col(i)) );
+    printf(",\n");
   }
 }
 
