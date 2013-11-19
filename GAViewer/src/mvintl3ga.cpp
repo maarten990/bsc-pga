@@ -392,10 +392,6 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
         intersection_count = (fabs(lcont(factors[0], factors[1]).scalar()) < epsilon)
           + (fabs(lcont(factors[1], factors[2]).scalar()) < epsilon)
           + (fabs(lcont(factors[2], factors[0]).scalar()) < epsilon);
-        printf("Factors:\n");
-        factors[0].print();
-        factors[1].print();
-        factors[2].print();
 
         if (only_coordinates_set(X, epsilon, GRADE3, L3GA_E23_E31_E12)) {
           m_type |= MVI_IDEAL_PLANE;
@@ -504,7 +500,8 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
             m_valid = 1;
           }
         }
-        else if (intersection_count == 2) {
+		else if (intersection_count == 2 &&
+			     (X * X).scalar() < epsilon && (X * X).scalar() > -epsilon) {
           m_type |= MVI_LINE_PENCIL_PAIR;
           printf("line pencil pair\n");
           /*
@@ -573,14 +570,6 @@ int mvInt::interpret(const l3ga &X, int creationFlags /* = 0*/) {
           l3ga mainAxisGA = vectorToNullGA(axis),
             axis1GA = vectorToNullGA(axis1),
             axis2GA = vectorToNullGA(axis2);
-          
-          std::cout << "Main axis: ";
-          mainAxisGA.print();
-          std::cout << "Axis 1: ";
-          axis1GA.print();
-          std::cout << "Axis 2: ";
-          axis2GA.print();
-          std::cout << std::endl;
 
           double weight1 = sqrt(axis1GA[GRADE1][L3GA_E01] * axis1GA[GRADE1][L3GA_E01] + axis1GA[GRADE1][L3GA_E02] * axis1GA[GRADE1][L3GA_E02] + axis1GA[GRADE1][L3GA_E03] * axis1GA[GRADE1][L3GA_E03]);
           double weight2 = sqrt(axis2GA[GRADE1][L3GA_E01] * axis2GA[GRADE1][L3GA_E01] + axis2GA[GRADE1][L3GA_E02] * axis2GA[GRADE1][L3GA_E02] + axis2GA[GRADE1][L3GA_E03] * axis2GA[GRADE1][L3GA_E03]);
@@ -1209,6 +1198,8 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   MatrixXd vectors;
   VectorXd values;
 
+  printf("===== Regulus debug output =====\n");
+
   MatrixXd transform = versorToMatrix(X);
   std::cout << "Transformation matrix: " << std::endl << transform << std::endl << std::endl;
 
@@ -1278,6 +1269,15 @@ int regulusParameters(const l3ga &X, VectorXd *mainAxis, VectorXd *axis1,
   *axis1 = (vectors.col(index1) + vectors.col(assocIndex1)) / sqrt(2.0);
   *axis2 = (vectors.col(index2) + vectors.col(assocIndex2)) / sqrt(2.0);
 
+  // debug output
+  std::cout << "Main axis: ";
+  vectorToNullGA(*mainAxis).print();
+  std::cout << "Axis 1: ";
+  vectorToNullGA(*axis1).print();
+  std::cout << "Axis 2: ";
+  vectorToNullGA(*axis2).print();
+
+  printf("\n===== End of regulus debug output =====\n\n");
   return slope;
 }
 
