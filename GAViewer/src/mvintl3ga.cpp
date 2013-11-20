@@ -1187,6 +1187,7 @@ void debugprint(const MatrixXd &vectors, const VectorXd &values)
   std::cout << "Eigenvectors ([index], eigenvalue, square, vector): " << std::endl;
   for (int i = 0; i < vectors.cols(); ++i) {
     std::cout << "[" << i << "]\t" << values[i] << ",\t" << vectors.col(i).transpose() * M * vectors.col(i) << ",\t";
+    printf("ev%d = ", i);
     printvector( vectorToNullGA(vectors.col(i)) );
     printf(",\n");
   }
